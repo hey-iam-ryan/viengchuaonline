@@ -55,7 +55,7 @@ jobs:
           VITE_REALTIME_URL: ${{ vars.VITE_REALTIME_URL }}
           VITE_DONATE_URL: ${{ vars.VITE_DONATE_URL }}
           VITE_CF_BEACON: ${{ vars.VITE_CF_BEACON }}
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with: { path: web/dist }
       - id: deployment
         uses: actions/deploy-pages@v4
