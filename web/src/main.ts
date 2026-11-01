@@ -6,6 +6,9 @@ import { buildTemple } from './scene/temple';
 import { LocalPlayer } from './player/localPlayer';
 import { Controls } from './player/controls';
 import { createAvatar } from './player/avatar';
+import { AudioManager } from './interact/audio';
+import { IncenseField } from './interact/incense';
+import { Actions } from './interact/actions';
 
 function fatal(msg: string) {
   const d = document.createElement('div');
@@ -20,12 +23,19 @@ if (!stage) {
   fatal('Thiết bị hoặc trình duyệt của bạn chưa hỗ trợ đồ hoạ 3D (WebGL). Hãy thử mở bằng Chrome hoặc Safari mới nhất. 🙏');
 } else {
   const { scene, camera } = stage;
-  buildTemple(scene);
+  const temple = buildTemple(scene);
   const player = new LocalPlayer();
   const controls = new Controls(canvas);
   controls.camYaw = 0;
   const me = createAvatar('lam', 'Bạn');
   scene.add(me.root);
+
+  const audio = new AudioManager();
+  const unlock = () => audio.unlock();
+  window.addEventListener('pointerdown', unlock, { once: true });
+  window.addEventListener('keydown', unlock, { once: true });
+  const incense = new IncenseField(scene, temple.burners);
+  const actions = new Actions({ player, audio, incense, send: () => {}, now: () => Date.now() });
 
   const camTarget = new THREE.Vector3();
   const camPos = new THREE.Vector3();
@@ -35,6 +45,7 @@ if (!stage) {
     me.root.position.z = player.z;
     me.root.rotation.y = player.ry;
     me.setPose(player.pose, performance.now() / 1000);
+    incense.update(dt, Date.now());
 
     // camera góc nhìn thứ ba
     const inHall = player.x > HALL.minX && player.x < HALL.maxX && player.z > HALL.minZ && player.z < HALL.maxZ;
@@ -53,5 +64,5 @@ if (!stage) {
   });
 
   // dev hook để thử nghiệm
-  if (import.meta.env.MODE !== 'production') (window as any).__vco = { player, controls, nearestZone };
+  if (import.meta.env.MODE !== 'production') (window as any).__vco = { player, controls, nearestZone, actions, audio };
 }
