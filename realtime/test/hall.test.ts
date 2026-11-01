@@ -1,0 +1,114 @@
+import { test, expect } from 'vitest';
+import { resolveCollision } from '@vco/shared/world';
+import { HALL_CAPACITY } from '@vco/shared/protocol';
+import { connect, join, sleep } from './helpers';
+
+test('hello → welcome có id & now', async () => {
+  const { w } = await join(0);
+  expect(w).toMatchObject({ hall: 0, players: [], incense: [] });
+  expect(typeof w.id).toBe('string');
+  expect(Math.abs(w.now - Date.now())).toBeLessThan(5000);
+});
+
+test('người thứ hai thấy người thứ nhất', async () => {
+  const a = await join(1, 'Minh');
+  a.c.send({ t: 's', x: 1, z: 10, ry: 0, p: 1 });
+  await sleep(400);
+  const b = await join(1, 'Lan');
+  expect(b.w.players).toEqual([expect.objectContaining({ id: a.w.id, n: 'Minh', x: 1, z: 10, p: 1 })]);
+  // a thấy b xuất hiện qua snap
+  let seen = false;
+  for (let i = 0; i < 5 && !seen; i++) seen = (await a.c.next('snap')).u.some((p) => p.id === b.w.id && p.n === 'Lan');
+  expect(seen).toBe(true);
+});
+
+test('tên được làm sạch phía server', async () => {
+  const a = await join(2, 'đ.m');
+  const b = await join(2);
+  expect(b.w.players[0]).toMatchObject({ id: a.w.id, n: 'Phật tử' });
+});
+
+test('toạ độ trên bàn thờ bị đẩy ra', async () => {
+  const a = await join(3);
+  const b = await join(3);
+  a.c.send({ t: 's', x: 0, z: -25, ry: 0, p: 0 });
+  let found;
+  for (let i = 0; i < 5 && !found; i++) found = (await b.c.next('snap')).u.find((p) => p.id === a.w.id && p.z !== 15);
+  expect(found).toBeDefined();
+  expect({ x: found!.x, z: found!.z }).toEqual(resolveCollision(0, -25));
+});
+
+test('tin trước hello bị bỏ qua', async () => {
+  const a = await connect(4);
+  a.send({ t: 's', x: 1, z: 1, ry: 0, p: 0 });
+  a.send({ t: 'a', a: 'bow' });
+  const b = await join(4);
+  expect(b.w.players).toEqual([]);
+});
+
+test('gộp snapshot ≤ 5Hz', async () => {
+  const a = await join(5);
+  const b = await join(5);
+  b.c.msgs.length = 0;
+  // 15 tin trong ~1s (dưới rate limit 15/s) → server chỉ được phát ≤ ~5 snap/giây
+  for (let i = 0; i < 15; i++) {
+    a.c.send({ t: 's', x: i * 0.035, z: 5, ry: 0, p: 1 });
+    await sleep(70);
+  }
+  await sleep(300);
+  const snaps = b.c.msgs.filter((m) => m.t === 'snap');
+  expect(snaps.length).toBeGreaterThan(0);
+  expect(snaps.length).toBeLessThanOrEqual(7);
+  expect(snaps.length).toBeLessThan(15);
+  const last = snaps.at(-1) as any;
+  expect(last.u.find((p: any) => p.id === a.w.id).x).toBeCloseTo(0.49);
+});
+
+test('hành động phát cho người khác', async () => {
+  const a = await join(6);
+  const b = await join(6);
+  a.c.send({ t: 'a', a: 'bow' });
+  expect(await b.c.next('act')).toEqual({ t: 'act', id: a.w.id, a: 'bow' });
+});
+
+test('thắp hương có cooldown & còn khi người mới vào', async () => {
+  const a = await join(7);
+  const b = await join(7);
+  a.c.send({ t: 'inc', b: 'yard' });
+  a.c.send({ t: 'inc', b: 'yard' });
+  const inc = await b.c.next('inc');
+  expect(inc.i.b).toBe('yard');
+  await sleep(300);
+  expect(b.c.msgs.filter((m) => m.t === 'inc')).toHaveLength(0);
+  const c = await join(7);
+  expect(c.w.incense).toHaveLength(1);
+});
+
+test(`đầy ${HALL_CAPACITY} → full + đóng 4001`, async () => {
+  const conns = [];
+  for (let i = 0; i < HALL_CAPACITY; i++) conns.push(await connect(8));
+  const extra = await connect(8);
+  expect(await extra.next('full')).toEqual({ t: 'full' });
+  expect(await extra.waitClose()).toBe(4001);
+});
+
+test('spam rác → đóng 4008', async () => {
+  const a = await join(9);
+  for (let i = 0; i < 25; i++) a.c.send('{bad');
+  expect(await a.c.waitClose()).toBe(4008);
+});
+
+test('tin quá rate bị đếm là vi phạm', async () => {
+  const a = await join(10);
+  for (let i = 0; i < 80; i++) a.c.send({ t: 'a', a: 'mo' });
+  expect(await a.c.waitClose()).toBe(4008);
+});
+
+test('rời đi → gone', async () => {
+  const a = await join(11);
+  const b = await join(11);
+  a.c.close();
+  let gone: string[] = [];
+  for (let i = 0; i < 5 && !gone.includes(a.w.id); i++) gone = (await b.c.next('snap')).gone;
+  expect(gone).toContain(a.w.id);
+});
