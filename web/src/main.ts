@@ -18,6 +18,7 @@ import { inviteUrl, makeCard, preferredHall, shareImage, cardText } from './ui/s
 import { formatCount } from './ui/hud';
 import { getLang } from './ui/i18n';
 import { nearestPlayer } from './net/nearby';
+import { FloatLayer } from './ui/floatText';
 import { Actions } from './interact/actions';
 import { NetClient } from './net/client';
 import { RemotePlayers } from './net/remotePlayers';
@@ -63,6 +64,13 @@ if (!stage) {
   const stateOf = () => ({ x: player.x, z: player.z, ry: player.ry, p: player.pose });
 
   let hud: ReturnType<typeof createHud> | null = null;
+  const floats = new FloatLayer(ui);
+  const headPos = new THREE.Vector3();
+  const floatAtMe = (kind: Parameters<FloatLayer['spawn']>[0]) => {
+    headPos.set(player.x, 1.7, player.z).project(camera);
+    if (headPos.z > 1) return; // sau lưng camera
+    floats.spawn(kind, (headPos.x * 0.5 + 0.5) * innerWidth, (-headPos.y * 0.5 + 0.5) * innerHeight);
+  };
   const actions = new Actions({
     player, audio, incense, lanterns, wishes: wishTree,
     myName: () => actions.progress.name,
@@ -70,6 +78,7 @@ if (!stage) {
     now: () => Date.now(),
     onProgress: (p, ms) => hud?.onProgress(p, ms),
     onRoundDone: (r) => hud?.onRoundDone(r),
+    onPerform: (k) => floatAtMe(k),
   });
   setLang(detectLang(navigator.languages ?? [navigator.language], actions.progress.lang));
 

@@ -5,6 +5,7 @@ import type { AudioManager } from './audio';
 import type { IncenseField } from './incense';
 import type { LanternField } from './lanterns';
 import type { WishTree } from './wishes';
+import type { FloatKind } from '../ui/floatText';
 import { addBow, loadProgress, nextBead, saveProgress, type Progress } from '../state/progress';
 
 const BELL_COOLDOWN_MS = 2500;
@@ -21,6 +22,8 @@ export interface ActionDeps {
   storage?: Storage;
   onProgress?: (p: Progress, milestone: 3 | 108 | null) => void;
   onRoundDone?: (rounds: number) => void;
+  /** Hành động thành công (để hiện chữ bay lên). */
+  onPerform?: (kind: FloatKind) => void;
 }
 
 export interface Available { sit: boolean; bow: boolean; bell: boolean; mo: boolean; incense: BurnerId | null; lantern: boolean; wish: boolean }
@@ -69,6 +72,7 @@ export class Actions {
     this.setProgress(r.p, r.milestone);
     this.d.audio.playChime();
     this.d.send({ t: 'a', a: 'bow' });
+    this.d.onPerform?.('bow');
   }
 
   bell(): void {
@@ -77,18 +81,21 @@ export class Actions {
     this.lastBell = now;
     this.d.audio.playBell();
     this.d.send({ t: 'a', a: 'chuong' });
+    this.d.onPerform?.('bell');
   }
 
   mo(): void {
     if (!this.available().mo) return;
     this.d.audio.playMo();
     this.d.send({ t: 'a', a: 'mo' });
+    this.d.onPerform?.('mo');
   }
 
   bead(): void {
     const r = nextBead(this.progress);
     this.setProgress(r.p);
     this.d.audio.playBead();
+    this.d.onPerform?.('bead');
     if (r.roundDone) {
       this.d.send({ t: 'a', a: 'beads' });
       this.d.onRoundDone?.(r.p.beadRounds);
@@ -103,6 +110,7 @@ export class Actions {
     this.d.incense.add({ b, at: now });
     this.setProgress({ ...this.progress, incenseTotal: this.progress.incenseTotal + 1 });
     this.d.send({ t: 'inc', b });
+    this.d.onPerform?.('incense');
     return true;
   }
 
@@ -116,6 +124,7 @@ export class Actions {
     const z = Math.round((p.z - 1.2) * 100) / 100;
     this.d.lanterns?.add({ x, z, at: now, s: Math.floor(Math.random() * 1000) });
     this.d.send({ t: 'den', x, z });
+    this.d.onPerform?.('lantern');
     return true;
   }
 

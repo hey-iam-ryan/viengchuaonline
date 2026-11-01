@@ -116,3 +116,17 @@ test('chắp tay chào: vái + gửi tin, cooldown 3s', () => {
   s.player.update(2, { x: 0, z: 0 }, 0);
   expect(s.a.greet('bob')).toBe(true);
 });
+
+test('mỗi hành động thành công báo onPerform để hiện chữ bay', () => {
+  const onPerform = vi.fn();
+  const player = new LocalPlayer();
+  const z = ZONES.find((z) => z.id === 'mo')!;
+  player.x = z.x; player.z = z.z;
+  const a = new Actions({ player, audio: { playBell: vi.fn(), playMo: vi.fn(), playBead: vi.fn(), playChime: vi.fn() } as any, incense: { add: vi.fn() } as any, send: () => {}, now: () => 0, storage: memStorage(), onPerform });
+  a.mo();
+  a.bead();
+  a.bow();
+  expect(onPerform.mock.calls.map((c) => c[0])).toEqual(['mo', 'bead', 'bow']);
+  a.bell(); // xa chuông → không báo
+  expect(onPerform).toHaveBeenCalledTimes(3);
+});

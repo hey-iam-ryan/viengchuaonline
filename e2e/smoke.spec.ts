@@ -126,6 +126,7 @@ test('đứng ở sân cũng vái được; 108 lạy liên tục đếm theo nh
   await expect(page.getByRole('button', { name: 'Đứng dậy' })).toBeHidden(); // đang đứng thì không có nút đứng dậy
   await page.getByRole('button', { name: 'Vái', exact: true }).click();
   await expect(page.getByTestId('bow-count')).toHaveText('1');
+  await expect(page.locator('.float-text', { hasText: 'An lạc +1' })).toHaveCount(1); // chữ bay lên khi vái
   await page.getByRole('button', { name: '108 lạy' }).click();
   await expect(page.getByTestId('bow108-count')).toHaveText(/^\d+\/108$/);
   // nhịp lạy chung mỗi 3,5s → trong ~4s phải có ít nhất 1 lạy
