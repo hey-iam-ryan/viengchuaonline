@@ -1,0 +1,80 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  # Server trước, web sau: web mới luôn gặp server mới (web cũng chịu được server cũ).
+  realtime:
+    name: Deploy realtime (Cloudflare)
+    needs: ci
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: wrangler deploy
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        run: npm run deploy -w @vco/realtime
+      - name: Bỏ qua (chưa có secret CLOUDFLARE_API_TOKEN)
+        if: env.CLOUDFLARE_API_TOKEN == ''
+        run: echo "::notice::Chưa đặt CLOUDFLARE_API_TOKEN — bỏ qua deploy realtime."
+
+  web:
+    name: Build & deploy web (GitHub Pages)
+    needs: realtime
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_REALTIME_URL: ${{ vars.VITE_REALTIME_URL }}
+          VITE_DONATE_URL: ${{ vars.VITE_DONATE_URL }}
+          VITE_CF_BEACON: ${{ vars.VITE_CF_BEACON }}
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: web/dist }
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  smoke:
+    name: Smoke test production
+    needs: web
+    runs-on: ubuntu-latest
+    steps:
+      - name: Web trả về trang chùa
+        run: |
+          for i in 1 2 3 4 5 6; do
+            html=$(curl -fsS "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/") && break
+            sleep 10
+          done
+          echo "$html" | grep -q "Viếng Chùa Online"
+      - name: Realtime /lobby và /stats hoạt động
+        if: vars.VITE_REALTIME_URL != ''
+        run: |
+          O="Origin: https://${{ github.repository_owner }}.github.io"
+          curl -fsS -H "$O" "${{ vars.VITE_REALTIME_URL }}/lobby" | grep -q '"hall"'
+          curl -fsS -H "$O" "${{ vars.VITE_REALTIME_URL }}/stats" | grep -q '"total"'

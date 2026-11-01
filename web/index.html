@@ -22,8 +22,10 @@
     <meta name="apple-mobile-web-app-title" content="Viếng Chùa" />
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
     <link rel="alternate icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪷</text></svg>" />
+    <style>#loading{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:radial-gradient(circle at 50% 40%,#8e1c17,#3b1a10);color:#fff6e3}</style>
   </head>
   <body>
+    <div id="loading" role="status" aria-live="polite"><div><div class="lotus-big">🪷</div><div class="t">Viếng Chùa Online</div><div class="bar"></div></div></div>
     <canvas id="scene" aria-label="Không gian chùa 3D"></canvas>
     <div id="ui"></div>
     <noscript>Vui lòng bật JavaScript để vào chùa.</noscript>

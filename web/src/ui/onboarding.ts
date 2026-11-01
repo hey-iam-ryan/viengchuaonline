@@ -30,6 +30,7 @@ export function showOnboarding(root: HTMLElement, initial: OnboardResult, onEnte
       h('div', { class: 'lotus', 'aria-hidden': 'true' }, '🪷'),
       h('h1', {}, t('title')),
       h('p', { class: 'sub' }, t('onboard.sub')),
+      h('p', { class: 'today', 'data-today': '' }),
       name,
       h('div', { class: 'label' }, t('onboard.robe')),
       h('div', { class: 'swatches' }, ...swatches),

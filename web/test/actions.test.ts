@@ -10,10 +10,12 @@ function setup(zoneId?: string) {
   if (zoneId) { const z = ZONES.find((z) => z.id === zoneId)!; player.x = z.x; player.z = z.z; }
   const audio = { playBell: vi.fn(), playMo: vi.fn(), playBead: vi.fn(), playChime: vi.fn() };
   const incense = { add: vi.fn() };
+  const lanterns = { add: vi.fn() };
+  const wishes = { add: vi.fn() };
   const sent: ClientMsg[] = [];
   let now = 0;
   const onProgress = vi.fn();
-  const a = new Actions({ player, audio: audio as any, incense: incense as any, send: (m) => sent.push(m), now: () => now, storage: memStorage(), onProgress });
+  const a = new Actions({ player, audio: audio as any, incense: incense as any, lanterns: lanterns as any, wishes: wishes as any, send: (m) => sent.push(m), now: () => now, storage: memStorage(), onProgress });
   return { a, player, audio, incense, sent, setNow: (t: number) => (now = t), onProgress };
 }
 
@@ -78,4 +80,21 @@ test('hành động người khác: chuông/mõ nghe nhỏ hơn', () => {
   s.a.onRemoteAction('x', 'bow');
   expect(s.audio.playBell).toHaveBeenCalledWith(0.45);
   expect(s.audio.playMo).toHaveBeenCalledWith(0.35);
+});
+
+test('thả đèn chỉ ở bờ hồ, có cooldown', () => {
+  const s = setup('pond');
+  expect(s.a.available().lantern).toBe(true);
+  expect(s.a.lantern()).toBe(true);
+  expect(s.a.lantern()).toBe(false);
+  expect(s.sent).toEqual([{ t: 'den', x: expect.any(Number), z: expect.any(Number) }]);
+  const far = setup();
+  expect(far.a.lantern()).toBe(false);
+});
+test('gửi lời nguyện chỉ ở cây bồ đề, có cooldown', () => {
+  const s = setup('wish');
+  expect(s.a.available().wish).toBe(true);
+  expect(s.a.wish(2)).toBe(true);
+  expect(s.a.wish(3)).toBe(false);
+  expect(s.sent).toEqual([{ t: 'ng', p: 2 }]);
 });

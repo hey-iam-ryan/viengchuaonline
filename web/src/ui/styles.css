@@ -69,3 +69,20 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .status { max-width: calc(100vw - 20px - 5 * 40px - 4 * 6px - 8px); padding: 8px 11px; font-size: 13px; }
   .ceremony { top: calc(env(safe-area-inset-top) + 58px); font-size: 12px; }
 }
+.toast.has-action { display: flex; align-items: center; gap: 10px; pointer-events: auto; }
+.toast.has-action button { border: 0; border-radius: 999px; padding: 6px 12px; background: var(--gold); color: var(--brown); font-weight: 700; }
+.toasts { pointer-events: none; }
+.toasts .has-action { pointer-events: auto !important; }
+.wish-list { display: flex; flex-direction: column; gap: 8px; max-height: 55vh; overflow: auto; margin-bottom: 8px; }
+.wish-opt { text-align: left; padding: 12px 14px; border-radius: 12px; border: 1.5px solid #e6d2a8; background: #fff; font-size: 15px; }
+.wish-opt:active { background: #fbe9c4; }
+.wishes { text-align: left; padding-left: 18px; margin: 0 0 16px; max-height: 50vh; overflow: auto; font-size: 14px; line-height: 1.5; }
+.today { margin: -6px 0 14px; font-size: 13px; color: var(--red); font-weight: 600; min-height: 1em; }
+#loading { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: radial-gradient(circle at 50% 40%, #8e1c17, #3b1a10); color: #fff6e3; font-family: "Times New Roman", serif; transition: opacity .6s; }
+#loading.done { opacity: 0; pointer-events: none; }
+#loading .lotus-big { font-size: 72px; animation: breathe 2.4s ease-in-out infinite; text-align: center; }
+#loading .t { margin-top: 8px; font-size: 22px; color: #f2c95a; text-align: center; }
+#loading .bar { margin: 16px auto 0; width: 160px; height: 3px; border-radius: 3px; background: rgba(255,246,227,.2); overflow: hidden; }
+#loading .bar::after { content: ""; display: block; width: 40%; height: 100%; background: #f2c95a; animation: slide 1.2s ease-in-out infinite; }
+@keyframes breathe { 50% { transform: scale(1.08); opacity: .85 } }
+@keyframes slide { from { transform: translateX(-100%) } to { transform: translateX(260%) } }

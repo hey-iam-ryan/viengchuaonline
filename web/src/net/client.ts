@@ -47,6 +47,7 @@ export class NetClient {
   private gotFull = false;
   private changing = false;
   private gen = 0;
+  private prefer = -1;
 
   constructor(o: Opts) {
     this.url = o.url;
@@ -71,8 +72,10 @@ export class NetClient {
     else this.msgCbs.push(cb as MsgCb);
   }
 
-  start(hello: { name: string; robe: Robe }): void {
+  /** prefer: gian bạn bè rủ vào (0-based), chỉ dùng cho lần kết nối đầu. */
+  start(hello: { name: string; robe: Robe }, prefer = -1): void {
     this.hello = hello;
+    this.prefer = prefer;
     if (!this.url || !this.WS) { this.setStatus('solo', null); return; }
     this.setStatus('connecting', null);
     void this.connect();
@@ -88,7 +91,10 @@ export class NetClient {
     const gen = ++this.gen;
     let hall: number;
     try {
-      const q = this.exclude.length ? `?exclude=${this.exclude.join(',')}` : '';
+      const params: string[] = [];
+      if (this.prefer >= 0) params.push(`prefer=${this.prefer}`);
+      if (this.exclude.length) params.push(`exclude=${this.exclude.join(',')}`);
+      const q = params.length ? `?${params.join('&')}` : '';
       const res = await this.fetchFn(`${this.url}/lobby${q}`);
       if (!res.ok) throw new Error(`lobby ${res.status}`);
       hall = Number((await res.json()).hall);
@@ -123,6 +129,7 @@ export class NetClient {
         this.fullTries = 0;
         this.backoffK = 0;
         this.exclude = [];
+        this.prefer = -1;
         this.setStatus('online', m.hall);
       }
       for (const cb of this.msgCbs) cb(m);

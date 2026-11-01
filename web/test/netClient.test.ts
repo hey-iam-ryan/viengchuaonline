@@ -21,7 +21,7 @@ class FakeWS {
 }
 const last = () => FakeWS.all.at(-1)!;
 const hello = { name: 'An', robe: 'lam' as const };
-const welcome = (hall: number, now: number): ServerMsg => ({ t: 'welcome', id: 'me', hall, now, players: [], incense: [] });
+const welcome = (hall: number, now: number): ServerMsg => ({ t: 'welcome', id: 'me', hall, now, players: [], incense: [], lanterns: [], wishes: [] });
 const flush = async () => { for (let i = 0; i < 5; i++) await Promise.resolve(); };
 
 function lobby(...halls: number[]) {
@@ -183,4 +183,12 @@ test('đổi gian: hỏi lobby với exclude gian hiện tại', async () => {
   c.changeHall();
   await flush();
   expect(urls.at(-1)).toBe('https://rt.example/lobby?exclude=4');
+});
+
+test('rủ bạn: lần kết nối đầu hỏi lobby với prefer', async () => {
+  const { fetchFn, urls } = lobby(4);
+  const c = new NetClient({ url: 'https://rt.example', fetchFn: fetchFn as any, WS: FakeWS as any, random: () => 0.5 });
+  c.start(hello, 4);
+  await flush();
+  expect(urls[0]).toBe('https://rt.example/lobby?prefer=4');
 });

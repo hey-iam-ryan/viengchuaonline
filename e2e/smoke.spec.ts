@@ -92,3 +92,28 @@ test('manifest PWA hợp lệ, có icon', async ({ page, request }) => {
   expect(m.display).toBe('fullscreen');
   for (const i of m.icons) expect((await request.get(`./${i.src}`)).status()).toBe(200);
 });
+
+test('thả đèn hoa đăng ở hồ sen & gửi lời nguyện ở cây bồ đề', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Vào chùa' }).click();
+  await expect(page.locator('#loading')).toHaveCount(0);
+  await page.evaluate(() => { const v = (window as any).__vco; const z = v.zones.find((z: any) => z.id === 'pond'); v.player.x = z.x; v.player.z = z.z; });
+  await page.getByRole('button', { name: 'Thả đèn hoa đăng' }).click();
+  await expect(page.getByText('Đèn hoa đăng đã được thả')).toBeVisible();
+  await page.evaluate(() => { const v = (window as any).__vco; const z = v.zones.find((z: any) => z.id === 'wish'); v.player.x = z.x; v.player.z = z.z; });
+  await page.getByRole('button', { name: 'Gửi lời nguyện' }).click();
+  await page.getByRole('button', { name: 'Cầu cho gia đình bình an, mạnh khoẻ' }).click();
+  await expect(page.getByText('Lời nguyện đã được treo lên cây bồ đề')).toBeVisible();
+  await page.getByRole('button', { name: 'Thêm' }).click();
+  await page.getByRole('button', { name: /Lời nguyện mọi người/ }).click();
+  await expect(page.getByRole('dialog').getByText('Cầu cho gia đình bình an, mạnh khoẻ')).toBeVisible();
+});
+
+test('buổi tối (20:00 giờ VN) trời tối, đèn sáng', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-11-01T13:00:00Z'));
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Vào chùa' }).click();
+  await page.waitForTimeout(500);
+  const bg = await page.evaluate(() => (window as any).__vco.sceneBg());
+  expect(bg).toBe(0x1d1c3b);
+});

@@ -1,11 +1,15 @@
-import { OBSTACLES, type Box } from '@vco/shared/world';
+import { GATE_PILLARS, OBSTACLES, type Box } from '@vco/shared/world';
 
-/** Các vật cản cao hơn camera: 5 bức tường chánh điện (xem shared/world OBSTACLES[0..4]). */
-const WALLS: Box[] = OBSTACLES.slice(0, 5);
+/** Vật cản cao hơn camera: 5 bức tường chánh điện (OBSTACLES[0..4]) và khối mái cổng tam quan. */
+const gateZ = GATE_PILLARS[0];
+const GATE_ROOF: Box = { minX: -9.5, maxX: 9.5, minZ: gateZ.minZ - 0.7, maxZ: gateZ.maxZ + 0.7 };
+const WALLS: Box[] = [...OBSTACLES.slice(0, 5), GATE_ROOF];
 const MARGIN = 0.3;
 
 /** Thời điểm t∈[0,1] đoạn P→C chạm hộp b (đã nới MARGIN), hoặc null. Thuật toán slab. */
 function hit(px: number, pz: number, dx: number, dz: number, b: Box): number | null {
+  // người đang đứng trong khối (vd. dưới mái cổng) → bỏ qua khối đó
+  if (px > b.minX - MARGIN && px < b.maxX + MARGIN && pz > b.minZ - MARGIN && pz < b.maxZ + MARGIN) return null;
   let t0 = 0;
   let t1 = 1;
   for (const [p, d, lo, hi] of [[px, dx, b.minX - MARGIN, b.maxX + MARGIN], [pz, dz, b.minZ - MARGIN, b.maxZ + MARGIN]]) {

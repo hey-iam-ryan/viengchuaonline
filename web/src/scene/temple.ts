@@ -1,15 +1,20 @@
 import * as THREE from 'three';
 import type { BurnerId } from '@vco/shared/protocol';
 import {
-  ALTAR, BELL_TOWER, BOUNDS, GATE_PILLARS, HALL, HALL_BURNER, MO_STAND, OBSTACLES, POND, TREES, YARD_BURNER, ZONES, type Box,
+  ALTAR, BELL_TOWER, BOUNDS, GATE_PILLARS, HALL, HALL_BURNER, MO_STAND, OBSTACLES, POND, TREES, WISH_TREE, YARD_BURNER, ZONES, type Box,
 } from '@vco/shared/world';
 import { MAT, tileTexture } from './materials';
+import { glowSprite } from './glow';
+
+const GLOWS: THREE.Sprite[] = [];
 
 export interface Temple {
   burners: Record<BurnerId, THREE.Vector3>;
   bell: THREE.Object3D;
   mo: THREE.Object3D;
   statue: THREE.Object3D;
+  glows: THREE.Sprite[];
+  lights: THREE.PointLight[];
 }
 
 const HALL_WALL_H = 5;
@@ -115,6 +120,9 @@ function lantern(x: number, y: number, z: number): THREE.Group {
   const tassel = mesh(new THREE.CylinderGeometry(0.02, 0.05, 0.35, 6), MAT.lantern, false);
   tassel.position.y = -0.55;
   g.add(tassel);
+  const glow = glowSprite(0xff5a2a, 1.6, 0.5);
+  g.add(glow);
+  GLOWS.push(glow);
   g.position.set(x, y, z);
   return g;
 }
@@ -210,6 +218,10 @@ function buddha(): THREE.Group {
   );
   glow.position.set(0, 1.95, -0.34);
   body.add(glow);
+  const haloGlow = glowSprite(0xffcf6b, 2.6, 0.35);
+  haloGlow.position.set(0, 1.95, -0.2);
+  body.add(haloGlow);
+  GLOWS.push(haloGlow);
   const mandorla = mesh(new THREE.TorusGeometry(1.05, 0.04, 8, 48), MAT.gold, false);
   mandorla.scale.set(1, 1.15, 1);
   mandorla.position.set(0, 1.1, -0.45);
@@ -395,6 +407,10 @@ export function buildTemple(scene: THREE.Scene): Temple {
     const fl = mesh(new THREE.ConeGeometry(0.05, 0.16, 8), new THREE.MeshBasicMaterial({ color: 0xffc04a }), false);
     fl.position.set(sx * 1.9, 1.98, -23.5);
     root.add(fl);
+    const cg = glowSprite(0xffb04a, 0.9, 0.6);
+    cg.position.copy(fl.position);
+    root.add(cg);
+    GLOWS.push(cg);
     const vase = mesh(new THREE.CylinderGeometry(0.14, 0.1, 0.45, 10), MAT.bronze);
     vase.position.set(sx * 1.2, 1.22, -23.6);
     root.add(vase);
@@ -437,6 +453,21 @@ export function buildTemple(scene: THREE.Scene): Temple {
   cMesh.receiveShadow = true;
   root.add(cMesh);
 
+  // cây bồ đề treo lời nguyện
+  const wt = WISH_TREE;
+  const bodhiTrunk = mesh(new THREE.CylinderGeometry(0.35 * wt.s, 0.55 * wt.s, 2.6 * wt.s, 9), MAT.trunk);
+  bodhiTrunk.position.set(wt.x, 1.3 * wt.s, wt.z);
+  root.add(bodhiTrunk);
+  for (const [dx, dy, dz, r] of [[0, 3.6, 0, 1.9], [1.1, 3.2, 0.6, 1.3], [-1.0, 3.3, -0.5, 1.4], [0.3, 4.4, -0.3, 1.3]]) {
+    const crown = mesh(new THREE.IcosahedronGeometry(r * wt.s, 1), MAT.leaf);
+    crown.position.set(wt.x + dx * wt.s, dy * wt.s, wt.z + dz * wt.s);
+    crown.scale.y = 0.75;
+    root.add(crown);
+  }
+  const wishBase = mesh(new THREE.CylinderGeometry(1.2 * wt.s, 1.3 * wt.s, 0.35, 16), MAT.stone);
+  wishBase.position.set(wt.x, 0.17, wt.z);
+  root.add(wishBase);
+
   // cây
   const trunks: THREE.Matrix4[] = [];
   const crowns: THREE.Matrix4[] = [];
@@ -454,5 +485,7 @@ export function buildTemple(scene: THREE.Scene): Temple {
     bell: bellObj,
     mo,
     statue,
+    glows: GLOWS,
+    lights: [glowLight, fill],
   };
 }

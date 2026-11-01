@@ -10,6 +10,8 @@ import { getLang, onLangChange, setLang, t, type Key, type Lang } from './i18n';
 import { share } from './share';
 import { fullscreenSupport, isFullscreen, toggleFullscreen } from './fullscreen';
 import { MUSIC_TRACKS } from '../interact/soundtrack';
+import { PRAYERS, type Wish } from '@vco/shared/protocol';
+import type { CardKind } from './shareCard';
 
 export function formatCountdown(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -45,6 +47,9 @@ export interface HudDeps {
   shareUrl: string;
   onLang: (l: Lang) => void;
   onAudioPref: (pref: { music?: boolean; chant?: boolean }) => void;
+  wishes: () => Wish[];
+  invite: () => string;
+  shareCard: (kind: CardKind, n: number) => Promise<'shared' | 'downloaded' | 'failed'>;
 }
 
 /** Thanh trạng thái, nút hành động theo ngữ cảnh, bộ đếm, giờ lễ, chia sẻ, cúng dường. */
@@ -88,6 +93,15 @@ export function createHud(d: HudDeps) {
       if (d.actions.lightIncense()) toast(t('incense.done'));
       else if (d.actions.available().incense) toast(t('incense.wait', { s: Math.ceil(d.actions.incenseCooldownLeft() / 1000) }));
     }, 'primary-act'),
+    lantern: btn('act.lantern', '🏮', () => {
+      if (d.actions.lantern()) toast(t('lantern.done'));
+      else if (d.actions.available().lantern) toast(t('lantern.wait', { s: Math.ceil(d.actions.cooldownLeft('lantern') / 1000) }));
+    }, 'primary-act'),
+    wish: btn('act.wish', '🎋', () => {
+      const left = d.actions.cooldownLeft('wish');
+      if (left > 0) { toast(t('wish.wait', { s: Math.ceil(left / 1000) })); return; }
+      pickWish();
+    }, 'primary-act'),
     beads: btn('act.beads', '📿', () => d.actions.bead()),
   };
   const actionsBar = h('div', { class: 'actions' }, ...Object.values(B));
@@ -95,15 +109,41 @@ export function createHud(d: HudDeps) {
   const toasts = h('div', { class: 'toasts', 'aria-live': 'polite' });
   root.append(top, ceremony, stats, actionsBar, hint, toasts);
 
-  function toast(msg: string) {
-    const el = h('div', { class: 'toast' }, msg);
+  function toast(msg: string, action?: { label: string; fn: () => void }) {
+    const el = h('div', { class: action ? 'toast has-action' : 'toast' }, msg,
+      action ? h('button', { type: 'button', on: { click: () => { el.remove(); action.fn(); } } }, action.label) : null);
     toasts.appendChild(el);
-    setTimeout(() => el.classList.add('out'), 2200);
-    setTimeout(() => el.remove(), 2700);
+    const life = action ? 7000 : 2200;
+    setTimeout(() => el.classList.add('out'), life);
+    setTimeout(() => el.remove(), life + 500);
+  }
+
+  const prayerText = (i: number) => PRAYERS[i]?.[getLang()] ?? '';
+
+  function pickWish() {
+    const list = h('div', { class: 'wish-list' }, ...PRAYERS.map((_, i) =>
+      h('button', { type: 'button', class: 'wish-opt', on: { click: () => { box.remove(); if (d.actions.wish(i)) toast(t('wish.done')); } } }, prayerText(i))));
+    const box: HTMLDivElement = h('div', { class: 'onboard', role: 'dialog', 'aria-modal': 'true' },
+      h('div', { class: 'card' }, h('h2', {}, t('wish.title')), list,
+        h('button', { type: 'button', class: 'link', on: { click: () => { box.remove(); } } }, t('close'))));
+    root.appendChild(box);
+  }
+
+  function showWishes() {
+    const ws = [...d.wishes()].reverse();
+    const body = ws.length
+      ? h('ul', { class: 'wishes' }, ...ws.map((w) => h('li', {}, h('b', {}, w.n || t('me')), ` — ${prayerText(w.p)}`)))
+      : t('wish.empty');
+    showDialog(`🎋 ${t('wish.list')}`, body);
+  }
+
+  async function shareAchievement(kind: CardKind, n: number) {
+    const r = await d.shareCard(kind, n);
+    if (r === 'downloaded') toast(t('card.saved'));
   }
 
   async function doShare() {
-    const r = await share(d.shareUrl, t('share.text'));
+    const r = await share(d.invite(), t('share.text'));
     if (r === 'copied') toast(t('share.copied'));
   }
 
@@ -132,6 +172,8 @@ export function createHud(d: HudDeps) {
   function buildMenu() {
     menu.replaceChildren(
       ...(netStatus === 'online' ? [h('button', { type: 'button', on: { click: () => { d.net.changeHall(); toggleMenu(false); } } }, `🚪 ${t('hall.change')}`)] : []),
+      h('button', { type: 'button', on: { click: () => { toggleMenu(false); showWishes(); } } }, `🎋 ${t('wish.list')}`),
+      ...(netStatus === 'online' ? [h('button', { type: 'button', on: { click: () => { toggleMenu(false); void doShare(); } } }, `👥 ${t('invite')}`)] : []),
       h('button', { type: 'button', on: { click: () => { const l = getLang() === 'vi' ? 'en' : 'vi'; setLang(l); d.onLang(l); toggleMenu(false); } } }, `🌐 ${t('lang')}`),
       ...(d.donateUrl ? [h('a', { href: d.donateUrl, target: '_blank', rel: 'noopener noreferrer', class: 'donate' }, `🙏 ${t('donate')}`)] : []),
       h('button', { type: 'button', on: { click: () => { toggleMenu(false); showCredits(); } } }, `📜 ${t('credits')}`),
@@ -236,9 +278,11 @@ export function createHud(d: HudDeps) {
     toast,
     onProgress(p: Progress, milestone: 3 | 108 | null) {
       renderProgress(p);
-      if (milestone) toast(t(milestone === 3 ? 'milestone.3' : 'milestone.108'));
+      if (milestone === 3) toast(t('milestone.3'));
+      if (milestone === 108) toast(t('milestone.108'), { label: t('card.share'), fn: () => void shareAchievement('bows', 108) });
     },
-    onRoundDone() { toast(t('round.done')); },
+    onRoundDone(rounds: number) { toast(t('round.done'), { label: t('card.share'), fn: () => void shareAchievement('beads', rounds) }); },
+    onRemoteWish(w: Wish) { toast(`🎋 ${w.n || t('me')}: ${prayerText(w.p)}`); },
     update(dt: number) {
       const a = d.actions.available();
       B.sit.hidden = !a.sit;
@@ -247,6 +291,8 @@ export function createHud(d: HudDeps) {
       B.bell.hidden = !a.bell;
       B.mo.hidden = !a.mo;
       B.incense.hidden = !a.incense;
+      B.lantern.hidden = !a.lantern;
+      B.wish.hidden = !a.wish;
       acc += dt;
       if (acc < 1) return;
       acc = 0;

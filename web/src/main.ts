@@ -9,6 +9,14 @@ import { createAvatar, type Avatar } from './player/avatar';
 import { clampCamera } from './player/camera';
 import { AudioManager } from './interact/audio';
 import { IncenseField } from './interact/incense';
+import { LanternField } from './interact/lanterns';
+import { WishTree } from './interact/wishes';
+import { daylightAt, vnHour } from './scene/daylight';
+import { setGlowNight } from './scene/glow';
+import { MAT } from './scene/materials';
+import { inviteUrl, makeCard, preferredHall, shareImage, cardText } from './ui/shareCard';
+import { formatCount } from './ui/hud';
+import { getLang } from './ui/i18n';
 import { Actions } from './interact/actions';
 import { NetClient } from './net/client';
 import { RemotePlayers } from './net/remotePlayers';
@@ -39,6 +47,7 @@ const stage = createRenderer(canvas);
 
 if (!stage) {
   setLang(detectLang(navigator.languages ?? [], null));
+  document.getElementById('loading')?.remove();
   fatal(t('webgl'));
 } else {
   const { scene, camera } = stage;
@@ -46,17 +55,20 @@ if (!stage) {
   const player = new LocalPlayer();
   const audio = new AudioManager();
   const incense = new IncenseField(scene, temple.burners);
+  const lanterns = new LanternField(scene);
+  const wishTree = new WishTree(scene);
   const net = new NetClient({ url: REALTIME_URL });
   const remotes = new RemotePlayers(scene);
   const stateOf = () => ({ x: player.x, z: player.z, ry: player.ry, p: player.pose });
 
   let hud: ReturnType<typeof createHud> | null = null;
   const actions = new Actions({
-    player, audio, incense,
+    player, audio, incense, lanterns, wishes: wishTree,
+    myName: () => actions.progress.name,
     send: (m) => net.send(m),
     now: () => Date.now(),
     onProgress: (p, ms) => hud?.onProgress(p, ms),
-    onRoundDone: () => hud?.onRoundDone(),
+    onRoundDone: (r) => hud?.onRoundDone(r),
   });
   setLang(detectLang(navigator.languages ?? [navigator.language], actions.progress.lang));
 
@@ -65,17 +77,31 @@ if (!stage) {
     remotes.apply(m, now);
     if (m.t === 'welcome') {
       audio.setServerOffset(net.serverOffsetMs);
-      incense.sync(m.incense.map((i) => ({ ...i, at: i.at - net.serverOffsetMs })), now);
+      incense.sync((m.incense ?? []).map((i) => ({ ...i, at: i.at - net.serverOffsetMs })), now);
+      lanterns.sync((m.lanterns ?? []).map((l) => ({ ...l, at: l.at - net.serverOffsetMs })), now);
+      wishTree.sync(m.wishes ?? []);
       player.takeChanged();
       net.sendState(stateOf());
     } else if (m.t === 'act') actions.onRemoteAction(m.id, m.a);
     else if (m.t === 'inc') incense.add({ b: m.i.b, at: m.i.at - net.serverOffsetMs });
+    else if (m.t === 'den') lanterns.add({ ...m.l, at: m.l.at - net.serverOffsetMs });
+    else if (m.t === 'ng') { wishTree.add(m.w); hud?.onRemoteWish(m.w); }
   });
   net.on('status', (s) => { if (s !== 'online') remotes.clear(); });
 
   let me: Avatar | null = null;
   let controls: Controls | null = null;
   let entered = false;
+
+  const shareBase = location.origin + location.pathname;
+  const prefer = preferredHall(location.search);
+  if (REALTIME_URL)
+    fetch(`${REALTIME_URL}/stats`).then((r) => r.json()).then((st) => {
+      const el = document.querySelector<HTMLElement>('[data-today]');
+      const d = st?.today;
+      if (el && d && d.incense + d.bows + d.lanterns > 0)
+        el.textContent = t('today', { incense: formatCount(d.incense, getLang()), bows: formatCount(d.bows, getLang()), lanterns: formatCount(d.lanterns, getLang()) });
+    }).catch(() => {});
 
   showOnboarding(ui, { name: actions.progress.name, robe: actions.progress.robe }, ({ name, robe }) => {
     audio.unlock();
@@ -89,20 +115,51 @@ if (!stage) {
     hud = createHud({
       root: ui, player, actions, audio, net,
       statsUrl: REALTIME_URL, donateUrl: DONATE_URL,
-      shareUrl: location.origin + location.pathname,
+      shareUrl: shareBase,
+      wishes: () => wishTree.list,
+      invite: () => inviteUrl(shareBase, net.status === 'online' ? net.hall : null),
+      shareCard: async (kind, n) => {
+        stage.renderer.render(scene, camera); // chụp ngay sau khi vẽ để có ảnh (không cần preserveDrawingBuffer)
+        const blob = await makeCard(canvas, kind, n, shareBase);
+        return blob ? shareImage(blob, cardText(kind, n).title, inviteUrl(shareBase, net.hall)) : 'failed';
+      },
       onLang: (l) => actions.setProgress({ ...actions.progress, lang: l }),
       onAudioPref: (pref) => actions.setProgress({ ...actions.progress, ...pref }),
     });
     hud.onProgress(actions.progress, null);
-    net.start({ name: clean, robe });
+    net.start({ name: clean, robe }, prefer);
   });
 
   const camTarget = new THREE.Vector3();
   const camPos = new THREE.Vector3();
   let introYaw = 0;
+  let lastSky = -Infinity;
+  let firstFrame = true;
+  const applyDaylight = (now: number) => {
+    const d = daylightAt(vnHour(now + net.serverOffsetMs));
+    (scene.background as THREE.Color).setHex(d.sky);
+    scene.fog?.color.setHex(d.sky);
+    stage.sun.intensity = d.sun;
+    stage.sun.position.y = d.sunY;
+    stage.hemi.intensity = d.hemi;
+    stage.hemi.color.setHex(d.night > 0.5 ? 0x8f9be0 : 0xfff1d6);
+    MAT.lantern.emissiveIntensity = 0.8 + 2.4 * d.night;
+    for (const l of temple.lights) l.intensity = (l === temple.lights[0] ? 18 : 10) * (1 + d.night * 0.8);
+    setGlowNight(temple.glows, d.night);
+    setGlowNight(lanterns.glows, d.night);
+  };
   stage.onFrame((dt) => {
     const now = Date.now();
+    if (firstFrame) {
+      firstFrame = false;
+      const l = document.getElementById('loading');
+      l?.classList.add('done');
+      setTimeout(() => l?.remove(), 700);
+    }
+    if (now - lastSky > 2000) { lastSky = now; applyDaylight(now); }
     incense.update(dt, now);
+    lanterns.update(now);
+    wishTree.update(now);
     remotes.update(now, camera.position);
     if (!entered || !controls || !me) {
       // màn chào: camera lượn chậm quanh sân chùa
@@ -140,6 +197,8 @@ if (!stage) {
     (window as any).__vco = {
       player, get controls() { return controls; }, nearestZone, actions, audio, net, remotes,
       zones: ZONES,
+      sceneBg: () => (scene.background as THREE.Color).getHex(),
+      lanterns, wishTree,
       teleportToCushion(i: number) {
         const z = ZONES.filter((z) => z.kind === 'cushion')[i];
         player.x = z.x; player.z = z.z; actions.sit();

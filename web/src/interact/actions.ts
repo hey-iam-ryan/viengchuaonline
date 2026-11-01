@@ -1,8 +1,10 @@
-import { INCENSE_COOLDOWN_MS, Pose, type Action, type BurnerId, type ClientMsg } from '@vco/shared/protocol';
+import { INCENSE_COOLDOWN_MS, LANTERN_COOLDOWN_MS, WISH_COOLDOWN_MS, Pose, type Action, type BurnerId, type ClientMsg } from '@vco/shared/protocol';
 import { nearestZone } from '@vco/shared/world';
 import type { LocalPlayer } from '../player/localPlayer';
 import type { AudioManager } from './audio';
 import type { IncenseField } from './incense';
+import type { LanternField } from './lanterns';
+import type { WishTree } from './wishes';
 import { addBow, loadProgress, nextBead, saveProgress, type Progress } from '../state/progress';
 
 const BELL_COOLDOWN_MS = 2500;
@@ -11,6 +13,9 @@ export interface ActionDeps {
   player: LocalPlayer;
   audio: Pick<AudioManager, 'playBell' | 'playMo' | 'playBead' | 'playChime'>;
   incense: Pick<IncenseField, 'add'>;
+  lanterns?: Pick<LanternField, 'add'>;
+  wishes?: Pick<WishTree, 'add'>;
+  myName?: () => string;
   send: (m: ClientMsg) => void;
   now: () => number;
   storage?: Storage;
@@ -18,12 +23,14 @@ export interface ActionDeps {
   onRoundDone?: (rounds: number) => void;
 }
 
-export interface Available { sit: boolean; bow: boolean; bell: boolean; mo: boolean; incense: BurnerId | null }
+export interface Available { sit: boolean; bow: boolean; bell: boolean; mo: boolean; incense: BurnerId | null; lantern: boolean; wish: boolean }
 
 export class Actions {
   progress: Progress;
   private lastIncense = -Infinity;
   private lastBell = -Infinity;
+  private lastLantern = -Infinity;
+  private lastWish = -Infinity;
 
   constructor(private readonly d: ActionDeps) {
     this.progress = loadProgress(d.storage, d.now());
@@ -45,6 +52,8 @@ export class Actions {
       bell: zone?.kind === 'bell',
       mo: zone?.kind === 'mo',
       incense: zone?.kind === 'burner' ? zone.burner ?? null : null,
+      lantern: zone?.kind === 'pond',
+      wish: zone?.kind === 'wish',
     };
   }
 
@@ -94,6 +103,33 @@ export class Actions {
     this.setProgress({ ...this.progress, incenseTotal: this.progress.incenseTotal + 1 });
     this.d.send({ t: 'inc', b });
     return true;
+  }
+
+  /** Thả đèn hoa đăng ở mép hồ gần người chơi. */
+  lantern(): boolean {
+    const now = this.d.now();
+    if (!this.available().lantern || now - this.lastLantern < LANTERN_COOLDOWN_MS) return false;
+    this.lastLantern = now;
+    const p = this.d.player;
+    const x = Math.round(p.x * 100) / 100;
+    const z = Math.round((p.z - 1.2) * 100) / 100;
+    this.d.lanterns?.add({ x, z, at: now, s: Math.floor(Math.random() * 1000) });
+    this.d.send({ t: 'den', x, z });
+    return true;
+  }
+
+  wish(p: number): boolean {
+    const now = this.d.now();
+    if (!this.available().wish || now - this.lastWish < WISH_COOLDOWN_MS) return false;
+    this.lastWish = now;
+    this.d.wishes?.add({ n: this.d.myName?.() ?? '', p, at: now });
+    this.d.send({ t: 'ng', p });
+    return true;
+  }
+
+  cooldownLeft(kind: 'lantern' | 'wish'): number {
+    const now = this.d.now();
+    return kind === 'lantern' ? Math.max(0, LANTERN_COOLDOWN_MS - (now - this.lastLantern)) : Math.max(0, WISH_COOLDOWN_MS - (now - this.lastWish));
   }
 
   incenseCooldownLeft(): number {

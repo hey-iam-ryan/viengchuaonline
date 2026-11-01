@@ -2,7 +2,7 @@
 
 **👉 Vào chùa: https://hey-iam-ryan.github.io/viengchuaonline/**
 
-Ngôi chùa Việt 3D chạy ngay trên trình duyệt: lạy Phật, thắp hương, gõ mõ, thỉnh chuông, lần chuỗi 108 hạt cùng mọi người. Không cần cài đặt, không cần đăng ký.
+Ngôi chùa Việt 3D chạy ngay trên trình duyệt: lạy Phật, thắp hương, gõ mõ, thỉnh chuông, lần chuỗi 108 hạt, thả đèn hoa đăng, treo lời nguyện cùng mọi người. Ngày/đêm theo giờ Việt Nam, nhạc thiền nền và nhịp mõ tụng kinh đồng bộ. Không cần cài đặt, không cần đăng ký.
 
 - **Web** (`web/`): Vite + TypeScript + Three.js. Cảnh chùa dựng hoàn toàn bằng code, âm thanh tổng hợp bằng Web Audio → tải đầu ~0,75MB.
 - **Realtime** (`realtime/`): Cloudflare Worker + Durable Objects. Mỗi gian chánh điện tối đa 100 người, có 100 gian.
@@ -37,13 +37,19 @@ Sửa `ALLOWED_ORIGINS` trong `realtime/wrangler.jsonc` nếu đổi tên miền
 
 Gói Workers Free dùng được lúc đầu. Khi đông người, nên lên **Workers Paid ($5/tháng)**: tin nhắn server gửi đi không tính phí, và giới hạn request cao hơn nhiều.
 
+### CI/CD (GitHub Actions — miễn phí với repo public)
+- **CI** (`.github/workflows/ci.yml`): mọi PR và mọi nhánh ≠ main → typecheck, unit test, build + kiểm tra dung lượng, e2e Playwright.
+- **Deploy** (`.github/workflows/deploy.yml`): push `main` → chạy CI → deploy realtime (Cloudflare) → deploy web (Pages) → smoke test trang thật.
+- **Dependabot**: mỗi tuần mở PR cập nhật thư viện (CI tự kiểm tra).
+- Deploy realtime tự động cần secret `CLOUDFLARE_API_TOKEN` (Cloudflare → My Profile → API Tokens → *Edit Cloudflare Workers*) và biến `CLOUDFLARE_ACCOUNT_ID`. Chưa có token thì bước này được bỏ qua.
+
 ### 2. Web (GitHub Pages)
 1. Repo → Settings → Pages → Source: **GitHub Actions**.
 2. Repo → Settings → Secrets and variables → Actions → **Variables**:
    - `VITE_REALTIME_URL` = URL worker ở bước 1 (để trống → chỉ chế độ một mình)
    - `VITE_DONATE_URL` = link cúng dường (MoMo/Ko-fi…; để trống → ẩn nút)
    - `VITE_CF_BEACON` = token Cloudflare Web Analytics (tuỳ chọn)
-3. Push lên `main` → workflow test, build, kiểm tra dung lượng, deploy.
+3. Push lên `main` → workflow Deploy chạy CI rồi deploy.
 
 ### Chuyển sang Cloudflare Pages / tên miền riêng
 Build với `VITE_BASE=/`, sửa `VITE_SITE_URL` trong `web/.env` (ảnh xem trước khi chia sẻ) và `ALLOWED_ORIGINS`.

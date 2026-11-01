@@ -10,7 +10,8 @@
   "scripts": {
     "test": "npm test -ws --if-present",
     "e2e": "playwright test",
-    "build": "npm run build -w @vco/web && node scripts/check-size.mjs"
+    "build": "npm run build -w @vco/web && node scripts/check-size.mjs",
+    "typecheck": "tsc --noEmit -p shared && tsc -p realtime && tsc --noEmit -p web"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",

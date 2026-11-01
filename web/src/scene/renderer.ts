@@ -6,6 +6,7 @@ export interface Stage {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   sun: THREE.DirectionalLight;
+  hemi: THREE.HemisphereLight;
   onFrame(cb: (dt: number, now: number) => void): void;
   quality: QualityGovernor;
 }
@@ -40,7 +41,8 @@ export function createRenderer(canvas: HTMLCanvasElement): Stage | null {
 
   const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 200);
 
-  scene.add(new THREE.HemisphereLight(0xfff1d6, 0x6b5a3a, 1.1));
+  const hemi = new THREE.HemisphereLight(0xfff1d6, 0x6b5a3a, 1.1);
+  scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xffe2b0, 2.2);
   sun.position.set(18, 30, 14);
   sun.castShadow = true;
@@ -91,5 +93,5 @@ export function createRenderer(canvas: HTMLCanvasElement): Stage | null {
     }
   });
 
-  return { renderer, scene, camera, sun, onFrame: (cb) => cbs.push(cb), quality };
+  return { renderer, scene, camera, sun, hemi, onFrame: (cb) => cbs.push(cb), quality };
 }
