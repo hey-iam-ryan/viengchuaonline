@@ -1,4 +1,4 @@
-import { INCENSE_COOLDOWN_MS, LANTERN_COOLDOWN_MS, WISH_COOLDOWN_MS, Pose, type Action, type BurnerId, type ClientMsg } from '@vco/shared/protocol';
+import { GREET_COOLDOWN_MS, INCENSE_COOLDOWN_MS, LANTERN_COOLDOWN_MS, WISH_COOLDOWN_MS, Pose, type Action, type BurnerId, type ClientMsg } from '@vco/shared/protocol';
 import { nearestZone } from '@vco/shared/world';
 import type { LocalPlayer } from '../player/localPlayer';
 import type { AudioManager } from './audio';
@@ -31,6 +31,7 @@ export class Actions {
   private lastBell = -Infinity;
   private lastLantern = -Infinity;
   private lastWish = -Infinity;
+  private lastGreet = -Infinity;
 
   constructor(private readonly d: ActionDeps) {
     this.progress = loadProgress(d.storage, d.now());
@@ -124,6 +125,16 @@ export class Actions {
     this.lastWish = now;
     this.d.wishes?.add({ n: this.d.myName?.() ?? '', p, at: now });
     this.d.send({ t: 'ng', p });
+    return true;
+  }
+
+  /** Chắp tay chào một người: vái + gửi tin (server phát cho cả gian). */
+  greet(to: string): boolean {
+    const now = this.d.now();
+    if (now - this.lastGreet < GREET_COOLDOWN_MS) return false;
+    this.lastGreet = now;
+    this.d.player.bow();
+    this.d.send({ t: 'hi', to });
     return true;
   }
 

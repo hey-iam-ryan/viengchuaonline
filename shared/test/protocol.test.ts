@@ -45,3 +45,10 @@ test('tư thế vái (đứng) hợp lệ', () => {
   expect(parseClientMsg('{"t":"s","x":1,"z":2,"ry":0,"p":4}')).toEqual({ t: 's', x: 1, z: 2, ry: 0, p: 4 });
   expect(parseClientMsg('{"t":"s","x":1,"z":2,"ry":0,"p":5}')).toBeNull();
 });
+
+test('chắp tay chào', () => {
+  expect(parseClientMsg('{"t":"hi","to":"ab12cd34"}')).toEqual({ t: 'hi', to: 'ab12cd34' });
+  expect(parseClientMsg('{"t":"hi","to":""}')).toBeNull();
+  expect(parseClientMsg(`{"t":"hi","to":"${'x'.repeat(40)}"}`)).toBeNull();
+  expect(parseClientMsg('{"t":"hi","to":5}')).toBeNull();
+});

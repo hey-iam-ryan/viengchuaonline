@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import {
   HALL_CAPACITY, INCENSE_COOLDOWN_MS, INCENSE_MAX_PER_HALL, INCENSE_TTL_MS, LANTERN_COOLDOWN_MS, LANTERN_MAX_PER_HALL,
-  LANTERN_TTL_MS, NET_HZ, WISH_COOLDOWN_MS, WISH_MAX_PER_HALL,
+  LANTERN_TTL_MS, NET_HZ, GREET_COOLDOWN_MS, WISH_COOLDOWN_MS, WISH_MAX_PER_HALL,
   parseClientMsg, type Incense, type Lantern, type PlayerState, type ServerMsg, type Wish,
 } from '@vco/shared/protocol';
 import { clampToPond, resolveCollision, SPAWN } from '@vco/shared/world';
@@ -18,6 +18,7 @@ interface Attachment {
   lastIncense: number;
   lastLantern?: number;
   lastWish?: number;
+  lastHi?: number;
   violations: number;
 }
 
@@ -120,6 +121,13 @@ export class Hall extends DurableObject<Env> {
         await this.ctx.storage.put('lanterns', this.lanterns);
         this.count('lanterns');
         this.broadcast({ t: 'den', l }, ws);
+        break;
+      }
+      case 'hi': {
+        if (now - (att.lastHi ?? 0) < GREET_COOLDOWN_MS) return;
+        att.lastHi = now;
+        ws.serializeAttachment(att);
+        this.broadcast({ t: 'hi', from: att.id, to: msg.to }, ws);
         break;
       }
       case 'ng': {

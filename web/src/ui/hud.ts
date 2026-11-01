@@ -52,6 +52,9 @@ export interface HudDeps {
   wishes: () => Wish[];
   invite: () => string;
   shareCard: (kind: CardKind, n: number) => Promise<'shared' | 'downloaded' | 'failed'>;
+  /** Người gần nhất trong tầm chào. */
+  nearby: () => { id: string; n: string } | null;
+  greet: (id: string) => void;
 }
 
 /** Thanh trạng thái, nút hành động theo ngữ cảnh, bộ đếm, giờ lễ, chia sẻ, cúng dường. */
@@ -104,10 +107,13 @@ export function createHud(d: HudDeps) {
       if (left > 0) { toast(t('wish.wait', { s: Math.ceil(left / 1000) })); return; }
       pickWish();
     }, 'primary-act'),
+    greet: btn('act.greet', '🙏', () => { if (greetTarget) d.greet(greetTarget.id); }, 'primary-act'),
     bow108: btn('act.bow108', '🙇', () => startBow108()),
     beads: btn('act.beads', '📿', () => d.actions.bead()),
   };
   const actionsBar = h('div', { class: 'actions' }, ...Object.values(B));
+
+  let greetTarget: { id: string; n: string } | null = null;
 
   // --- 108 lạy liên tục ---
   const session = new Bow108();
@@ -249,7 +255,7 @@ export function createHud(d: HudDeps) {
   }
 
   function relabel() {
-    for (const b of Object.values(B)) b.querySelector('.lb')!.textContent = t(b.dataset.key as Key);
+    for (const b of Object.values(B)) b.querySelector('.lb')!.textContent = t(b.dataset.key as Key, { name: '' });
     b108Title.textContent = t('bow108.title');
     b108Hint.textContent = t('bow108.hint');
     b108Stop.textContent = t('bow108.stop');
@@ -311,13 +317,23 @@ export function createHud(d: HudDeps) {
       if (milestone === 108) toast(t('milestone.108'), { label: t('card.share'), fn: () => void shareAchievement('bows', 108) });
     },
     onRoundDone(rounds: number) { toast(t('round.done'), { label: t('card.share'), fn: () => void shareAchievement('beads', rounds) }); },
+    onGreeted(fromId: string, name: string) {
+      toast(t('greet.got', { name }), { label: t('greet.back'), fn: () => d.greet(fromId) });
+    },
     onRemoteWish(w: Wish) { toast(`🎋 ${w.n || t('me')}: ${prayerText(w.p)}`); },
     update(dt: number) {
       const a = d.actions.available();
       B.sit.hidden = !a.sit;
-      B.stand.hidden = !(a.bow || d.player.pose === 3);
+      B.stand.hidden = !(d.player.pose === Pose.Sit || d.player.pose === Pose.Bow);
       B.bow.hidden = !a.bow || session.active;
       B.bow108.hidden = session.active;
+      greetTarget = d.nearby();
+      B.greet.hidden = !greetTarget;
+      if (greetTarget) {
+        const gl = t('act.greet', { name: greetTarget.n }).trim();
+        const g = B.greet.querySelector('.lb')!;
+        if (g.textContent !== gl) g.textContent = gl;
+      }
       const standing = d.player.pose === Pose.Stand || d.player.pose === Pose.Vai;
       const bowLabel = t(standing ? 'act.vai' : 'act.bow');
       const lb = B.bow.querySelector('.lb')!;

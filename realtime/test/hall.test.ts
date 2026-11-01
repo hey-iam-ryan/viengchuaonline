@@ -166,3 +166,16 @@ test('lời nguyện: kèm pháp danh đã làm sạch, cooldown, giữ cho ngư
   const c = await join(41);
   expect(c.w.wishes.map((x) => x.p)).toEqual([0]);
 });
+
+test('chắp tay chào: gửi cho cả gian (trừ người chào), có cooldown', async () => {
+  const a = await join(50, 'Minh Tâm');
+  const b = await join(50);
+  const c = await join(50);
+  a.c.send({ t: 'hi', to: b.w.id });
+  a.c.send({ t: 'hi', to: b.w.id });
+  expect(await b.c.next('hi')).toEqual({ t: 'hi', from: a.w.id, to: b.w.id });
+  expect(await c.c.next('hi')).toEqual({ t: 'hi', from: a.w.id, to: b.w.id });
+  await sleep(200);
+  expect(b.c.msgs.filter((m) => m.t === 'hi')).toHaveLength(0);
+  expect(a.c.msgs.filter((m) => m.t === 'hi')).toHaveLength(0);
+});

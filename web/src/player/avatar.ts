@@ -49,9 +49,45 @@ function nameSprite(name: string): THREE.Sprite {
   return s;
 }
 
+function bubbleSprite(): { sprite: THREE.Sprite; setText(text: string): void } {
+  const c = document.createElement('canvas');
+  c.width = 512;
+  c.height = 128;
+  const g = c.getContext('2d');
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false, transparent: true }));
+  sprite.scale.set(1.9, 0.48, 1);
+  sprite.renderOrder = 11;
+  sprite.visible = false;
+  return {
+    sprite,
+    setText(text) {
+      if (!g) return;
+      g.clearRect(0, 0, 512, 128);
+      g.font = '600 44px system-ui, sans-serif';
+      const w = Math.min(500, g.measureText(text).width + 48);
+      g.fillStyle = 'rgba(255,246,227,0.95)';
+      g.beginPath();
+      g.roundRect((512 - w) / 2, 8, w, 88, 40);
+      g.moveTo(240, 94); g.lineTo(256, 120); g.lineTo(272, 94);
+      g.fill();
+      g.fillStyle = '#7a1410';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(text, 256, 54, 470);
+      tex.needsUpdate = true;
+    },
+  };
+}
+
+const BUBBLE_SECONDS = 3;
+
 export interface Avatar {
   root: THREE.Object3D;
   label: THREE.Sprite;
+  /** Hiện bong bóng lời nói vài giây (t = giây hiện tại). */
+  say(text: string, t: number): void;
   setPose(p: Pose, t: number): void;
   dispose(): void;
 }
@@ -100,6 +136,9 @@ export function createAvatar(robe: Robe, name: string): Avatar {
 
   const label = nameSprite(name);
   root.add(label);
+  const bubble = bubbleSprite();
+  root.add(bubble.sprite);
+  let bubbleUntil = -1;
 
   let current: Pose | -1 = -1;
   let since = 0;
@@ -107,7 +146,17 @@ export function createAvatar(robe: Robe, name: string): Avatar {
   return {
     root,
     label,
+    say(text, t) {
+      bubble.setText(text);
+      bubbleUntil = t + BUBBLE_SECONDS;
+    },
     setPose(p, t) {
+      const left = bubbleUntil - t;
+      bubble.sprite.visible = left > 0;
+      if (left > 0) {
+        bubble.sprite.position.y = label.position.y + 0.5 + Math.min(0.15, (BUBBLE_SECONDS - left) * 0.6);
+        (bubble.sprite.material as THREE.SpriteMaterial).opacity = Math.min(1, left * 2);
+      }
       if (p !== current) { current = p; since = t; }
       const sitting = p === Pose.Sit || p === Pose.Bow;
       skirt.visible = !sitting;
@@ -134,6 +183,8 @@ export function createAvatar(robe: Robe, name: string): Avatar {
       }
     },
     dispose() {
+      (bubble.sprite.material as THREE.SpriteMaterial).map?.dispose();
+      bubble.sprite.material.dispose();
       (label.material as THREE.SpriteMaterial).map?.dispose();
       label.material.dispose();
     },

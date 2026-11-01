@@ -123,6 +123,7 @@ test('buổi tối (20:00 giờ VN) trời tối, đèn sáng', async ({ page })
 test('đứng ở sân cũng vái được; 108 lạy liên tục đếm theo nhịp và dừng được', async ({ page }) => {
   await page.goto('./');
   await page.getByRole('button', { name: 'Vào chùa' }).click();
+  await expect(page.getByRole('button', { name: 'Đứng dậy' })).toBeHidden(); // đang đứng thì không có nút đứng dậy
   await page.getByRole('button', { name: 'Vái', exact: true }).click();
   await expect(page.getByTestId('bow-count')).toHaveText('1');
   await page.getByRole('button', { name: '108 lạy' }).click();

@@ -104,3 +104,15 @@ test('gửi lời nguyện chỉ ở cây bồ đề, có cooldown', () => {
   expect(s.a.wish(3)).toBe(false);
   expect(s.sent).toEqual([{ t: 'ng', p: 2 }]);
 });
+
+test('chắp tay chào: vái + gửi tin, cooldown 3s', () => {
+  const s = setup();
+  expect(s.a.greet('bob')).toBe(true);
+  expect(s.player.pose).toBe(Pose.Vai);
+  expect(s.sent).toEqual([{ t: 'hi', to: 'bob' }]);
+  s.setNow(1000);
+  expect(s.a.greet('bob')).toBe(false);
+  s.setNow(3100);
+  s.player.update(2, { x: 0, z: 0 }, 0);
+  expect(s.a.greet('bob')).toBe(true);
+});

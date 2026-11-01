@@ -10,6 +10,7 @@ export const LANTERN_MAX_PER_HALL = 40;
 export const LANTERN_COOLDOWN_MS = 15_000;
 export const WISH_MAX_PER_HALL = 30;
 export const WISH_COOLDOWN_MS = 30_000;
+export const GREET_COOLDOWN_MS = 3_000;
 
 /** Lời nguyện soạn sẵn — không cho gõ tự do để khỏi phải kiểm duyệt. */
 export const PRAYERS: readonly { vi: string; en: string }[] = [
@@ -47,7 +48,8 @@ export type ClientMsg =
   | { t: 'a'; a: Action }
   | { t: 'inc'; b: BurnerId }
   | { t: 'den'; x: number; z: number }
-  | { t: 'ng'; p: number };
+  | { t: 'ng'; p: number }
+  | { t: 'hi'; to: string };
 
 export type ServerMsg =
   | { t: 'welcome'; id: string; hall: number; now: number; players: PlayerState[]; incense: Incense[]; lanterns: Lantern[]; wishes: Wish[] }
@@ -56,6 +58,7 @@ export type ServerMsg =
   | { t: 'inc'; i: Incense }
   | { t: 'den'; l: Lantern }
   | { t: 'ng'; w: Wish }
+  | { t: 'hi'; from: string; to: string }
   | { t: 'full' };
 
 const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
@@ -85,6 +88,8 @@ export function parseClientMsg(raw: string | ArrayBuffer): ClientMsg | null {
       return oneOf(BURNERS, m.b) ? { t: 'inc', b: m.b } : null;
     case 'den':
       return num(m.x) && num(m.z) ? { t: 'den', x: m.x, z: m.z } : null;
+    case 'hi':
+      return typeof m.to === 'string' && m.to.length > 0 && m.to.length <= 16 ? { t: 'hi', to: m.to } : null;
     case 'ng':
       return Number.isInteger(m.p) && m.p >= 0 && m.p < PRAYERS.length ? { t: 'ng', p: m.p } : null;
     default:

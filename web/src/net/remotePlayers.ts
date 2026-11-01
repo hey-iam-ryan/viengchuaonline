@@ -16,6 +16,16 @@ export class RemotePlayers {
   constructor(private readonly scene: THREE.Scene) {}
 
   count(): number { return this.map.size; }
+  get myId(): string | null { return this.selfId; }
+
+  /** Vị trí hiện tại (đã nội suy) của mọi người, để tìm người gần nhất. */
+  positions(): { id: string; n: string; x: number; z: number }[] {
+    return [...this.map.entries()].map(([id, r]) => ({ id, n: r.state.n, x: r.avatar.root.position.x, z: r.avatar.root.position.z }));
+  }
+
+  nameOf(id: string): string | null { return this.map.get(id)?.state.n ?? null; }
+
+  say(id: string, text: string, t: number): void { this.map.get(id)?.avatar.say(text, t); }
 
   apply(m: ServerMsg, now: number): void {
     if (m.t === 'welcome') {

@@ -17,6 +17,7 @@ import { MAT } from './scene/materials';
 import { inviteUrl, makeCard, preferredHall, shareImage, cardText } from './ui/shareCard';
 import { formatCount } from './ui/hud';
 import { getLang } from './ui/i18n';
+import { nearestPlayer } from './net/nearby';
 import { Actions } from './interact/actions';
 import { NetClient } from './net/client';
 import { RemotePlayers } from './net/remotePlayers';
@@ -86,6 +87,10 @@ if (!stage) {
     else if (m.t === 'inc') incense.add({ b: m.i.b, at: m.i.at - net.serverOffsetMs });
     else if (m.t === 'den') lanterns.add({ ...m.l, at: m.l.at - net.serverOffsetMs });
     else if (m.t === 'ng') { wishTree.add(m.w); hud?.onRemoteWish(m.w); }
+    else if (m.t === 'hi') {
+      remotes.say(m.from, t('greet.say'), performance.now() / 1000);
+      if (m.to === remotes.myId) hud?.onGreeted(m.from, remotes.nameOf(m.from) || t('me'));
+    }
   });
   net.on('status', (s) => { if (s !== 'online') remotes.clear(); });
 
@@ -117,6 +122,8 @@ if (!stage) {
       statsUrl: REALTIME_URL, donateUrl: DONATE_URL,
       shareUrl: shareBase,
       wishes: () => wishTree.list,
+      nearby: () => nearestPlayer(remotes.positions(), player.x, player.z),
+      greet: (id) => { if (actions.greet(id)) me?.say(t('greet.say'), performance.now() / 1000); },
       invite: () => inviteUrl(shareBase, net.status === 'online' ? net.hall : null),
       shareCard: async (kind, n) => {
         stage.renderer.render(scene, camera); // chụp ngay sau khi vẽ để có ảnh (không cần preserveDrawingBuffer)
