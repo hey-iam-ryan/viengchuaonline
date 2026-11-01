@@ -118,18 +118,17 @@ test('buổi tối (20:00 giờ VN) trời tối, đèn sáng', async ({ page })
   expect(bg).toBe(0x1d1c3b);
 });
 
+// Không dùng page.clock.install ở đây: đồng hồ giả thay requestAnimationFrame, trên máy CI không GPU
+// mỗi khung 3D tốn hàng trăm ms nên đồng hồ giả gọi dồn khung để "đuổi kịp" → trang treo. Dùng thời gian thật.
 test('đứng ở sân cũng vái được; 108 lạy liên tục đếm theo nhịp và dừng được', async ({ page }) => {
-  await page.clock.install({ time: new Date('2026-11-02T03:00:00Z') });
   await page.goto('./');
   await page.getByRole('button', { name: 'Vào chùa' }).click();
   await page.getByRole('button', { name: 'Vái', exact: true }).click();
   await expect(page.getByTestId('bow-count')).toHaveText('1');
-  await page.clock.runFor(2000);
   await page.getByRole('button', { name: '108 lạy' }).click();
-  await expect(page.getByTestId('bow108-count')).toHaveText('0/108');
-  // tua đúng hơn một nhịp lạy (3,5s); ít khung hình để chạy nhanh trên máy CI không có GPU
-  await page.clock.runFor(4000);
-  await expect(page.getByTestId('bow108-count')).toHaveText(/^[1-9]\d*\/108$/);
+  await expect(page.getByTestId('bow108-count')).toHaveText(/^\d+\/108$/);
+  // nhịp lạy chung mỗi 3,5s → trong ~4s phải có ít nhất 1 lạy
+  await expect(page.getByTestId('bow108-count')).toHaveText(/^[1-9]\d*\/108$/, { timeout: 15_000 });
   await page.getByRole('button', { name: 'Dừng' }).click();
   await expect(page.getByTestId('bow108-count')).toBeHidden();
 });
