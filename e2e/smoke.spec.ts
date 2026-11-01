@@ -127,8 +127,9 @@ test('đứng ở sân cũng vái được; 108 lạy liên tục đếm theo nh
   await page.clock.runFor(2000);
   await page.getByRole('button', { name: '108 lạy' }).click();
   await expect(page.getByTestId('bow108-count')).toHaveText('0/108');
-  await page.clock.runFor(3600 * 3);
-  await expect(page.getByTestId('bow108-count')).not.toHaveText('0/108');
+  // tua đúng hơn một nhịp lạy (3,5s); ít khung hình để chạy nhanh trên máy CI không có GPU
+  await page.clock.runFor(4000);
+  await expect(page.getByTestId('bow108-count')).toHaveText(/^[1-9]\d*\/108$/);
   await page.getByRole('button', { name: 'Dừng' }).click();
   await expect(page.getByTestId('bow108-count')).toBeHidden();
 });
