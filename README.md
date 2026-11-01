@@ -1,5 +1,7 @@
 # 🪷 Viếng Chùa Online
 
+**👉 Vào chùa: https://hey-iam-ryan.github.io/viengchuaonline/**
+
 Ngôi chùa Việt 3D chạy ngay trên trình duyệt: lạy Phật, thắp hương, gõ mõ, thỉnh chuông, lần chuỗi 108 hạt cùng mọi người. Không cần cài đặt, không cần đăng ký.
 
 - **Web** (`web/`): Vite + TypeScript + Three.js. Cảnh chùa dựng hoàn toàn bằng code, âm thanh tổng hợp bằng Web Audio → tải đầu ~0,75MB.
