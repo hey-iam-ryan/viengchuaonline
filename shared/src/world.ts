@@ -21,6 +21,13 @@ export const BELL_TOWER: Box = box(11, 13, -3, -1);
 export const MO_STAND: Box = box(3.25, 3.75, -22.25, -21.75);
 export const GATE_PILLARS: Box[] = [box(-4, -3, 17.5, 18.5), box(3, 4, 17.5, 18.5), box(-8, -7, 17.5, 18.5), box(7, 8, 17.5, 18.5)];
 
+/** Gốc cây trang trí ven khuôn viên (cũng là vật cản). */
+export const TREES: { x: number; z: number; s: number }[] = [
+  { x: -16, z: 14, s: 1.2 }, { x: 16, z: 14, s: 1.1 }, { x: -17, z: 4, s: 1.4 }, { x: 17, z: 6, s: 1 },
+  { x: -15, z: -6, s: 1.1 }, { x: 16.5, z: -8, s: 1.3 }, { x: -15, z: -20, s: 1.5 }, { x: 15, z: -21, s: 1.2 },
+  { x: -13, z: 10, s: 0.8 }, { x: 13, z: 12, s: 0.9 },
+];
+
 export const OBSTACLES: Box[] = [
   box(-10, 10, -28.5, -28), // tường sau
   box(-10.5, -10, -28.5, -10), // tường trái
@@ -34,6 +41,7 @@ export const OBSTACLES: Box[] = [
   BELL_TOWER,
   MO_STAND,
   ...GATE_PILLARS,
+  ...TREES.map((t) => box(t.x - 0.4 * t.s, t.x + 0.4 * t.s, t.z - 0.4 * t.s, t.z + 0.4 * t.s)),
 ];
 
 const cushions: Zone[] = [];

@@ -5,3 +5,4 @@ test-results
 playwright-report
 .superpowers
 .dev.vars
+.playwright-mcp

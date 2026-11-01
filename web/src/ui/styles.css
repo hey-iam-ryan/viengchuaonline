@@ -1,0 +1,7 @@
+:root { --red: #7a1410; --gold: #e0b24a; --cream: #fff6e3; --brown: #3b2219; color-scheme: light; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #f3d9b1; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--brown); overscroll-behavior: none; touch-action: none; user-select: none; -webkit-user-select: none; }
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+#ui { position: fixed; inset: 0; pointer-events: none; }
+#ui > * { pointer-events: auto; }
+.fatal { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; background: var(--cream); font-size: 18px; line-height: 1.5; }
