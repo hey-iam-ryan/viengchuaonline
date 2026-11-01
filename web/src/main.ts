@@ -1,6 +1,6 @@
 import './ui/styles.css';
 import * as THREE from 'three';
-import { HALL, nearestZone } from '@vco/shared/world';
+import { HALL, ZONES, nearestZone } from '@vco/shared/world';
 import { createRenderer } from './scene/renderer';
 import { buildTemple } from './scene/temple';
 import { LocalPlayer } from './player/localPlayer';
@@ -133,11 +133,11 @@ if (!stage) {
   if (import.meta.env.MODE !== 'production') {
     (window as any).__vco = {
       player, get controls() { return controls; }, nearestZone, actions, audio, net, remotes,
+      zones: ZONES,
       teleportToCushion(i: number) {
-        const z = (window as any).__vco.zones.filter((z: any) => z.kind === 'cushion')[i];
+        const z = ZONES.filter((z) => z.kind === 'cushion')[i];
         player.x = z.x; player.z = z.z; actions.sit();
       },
     };
-    import('@vco/shared/world').then((w) => ((window as any).__vco.zones = w.ZONES));
   }
 }
