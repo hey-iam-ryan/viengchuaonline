@@ -78,6 +78,7 @@ if (!stage) {
 
   showOnboarding(ui, { name: actions.progress.name, robe: actions.progress.robe }, ({ name, robe }) => {
     audio.unlock();
+    window.addEventListener('pointerdown', () => audio.unlock()); // bật lại âm thanh nếu iOS đã ngắt
     entered = true;
     const clean = name ? sanitizeName(name) : '';
     actions.setProgress({ ...actions.progress, name: clean, robe });

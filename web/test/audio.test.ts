@@ -31,3 +31,18 @@ test('unlock tạo đúng một AudioContext', () => {
   a.unlock();
   expect(ctor).toHaveBeenCalledTimes(1);
 });
+
+test('iOS: context bị "interrupted" thì unlock gọi resume lại', () => {
+  const resume = vi.fn(async () => {});
+  (globalThis as any).AudioContext = vi.fn(function (this: any) {
+    this.state = 'running';
+    this.resume = resume;
+    this.destination = {};
+    this.createGain = () => ({ gain: { value: 1 }, connect() { return this; } });
+  });
+  const a = new AudioManager();
+  a.unlock();
+  (a as any).ctx.state = 'interrupted';
+  a.unlock();
+  expect(resume).toHaveBeenCalledTimes(1);
+});

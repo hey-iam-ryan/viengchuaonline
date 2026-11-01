@@ -33,14 +33,20 @@ export class Lobby extends DurableObject<Env> {
     const c = await this.counts();
     const ex = new Set(exclude);
     const total = Object.values(c).reduce((a, b) => a + b, 0);
-    let least = -1;
+    let pick = -1;
     for (let h = 0; h < HALL_COUNT; h++) {
       if (ex.has(h)) continue;
       const n = c[h] ?? 0;
-      if (n < SOFT_CAP) return { hall: h, total };
-      if (n < HALL_CAPACITY && (least < 0 || n < (c[least] ?? 0))) least = h;
+      if (n < SOFT_CAP) { pick = h; break; }
+      if (n < HALL_CAPACITY && (pick < 0 || n < (c[pick] ?? 0))) pick = h;
     }
-    return { hall: least, total };
+    if (pick >= 0) {
+      // giữ chỗ ngay: người vào dồn dập trước khi Hall kịp báo vẫn được chia đều; báo cáo thật của Hall sẽ ghi đè
+      const raw = await this.raw();
+      raw[pick] = { c: Math.min(HALL_CAPACITY, (c[pick] ?? 0) + 1), at: Date.now() };
+      await this.ctx.storage.put('counts', raw);
+    }
+    return { hall: pick, total };
   }
 
   async total(): Promise<number> {

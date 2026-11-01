@@ -77,3 +77,10 @@ test('báo cáo cũ hơn STALE_MS bị bỏ qua (gian bị reset không kịp b�
   });
   expect((await getJson('/stats')).total).toBe(2);
 });
+
+test('giữ chỗ khi xếp: nhiều người vào dồn dập trước khi gian kịp báo vẫn được chia gian', async () => {
+  const halls: number[] = [];
+  for (let i = 0; i < 95; i++) halls.push((await getJson('/lobby')).hall);
+  expect(halls.filter((h) => h === 0)).toHaveLength(90);
+  expect(halls.slice(90)).toEqual([1, 1, 1, 1, 1]);
+});

@@ -19,7 +19,7 @@ export class AudioManager {
   get chantPlaying() { return this.chantOn; }
 
   unlock(): void {
-    if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {}); return; }
+    if (this.ctx) { if (this.ctx.state !== 'running') this.ctx.resume().catch(() => {}); return; } // iOS: 'interrupted' sau khi khoá màn hình
     const Ctor: typeof AudioContext | undefined = (globalThis as any).AudioContext ?? (globalThis as any).webkitAudioContext;
     if (!Ctor) return;
     try {

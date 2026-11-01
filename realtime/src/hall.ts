@@ -104,7 +104,7 @@ export class Hall extends DurableObject<Env> {
         const i: Incense = { b: msg.b, at: now };
         this.incense = [...this.liveIncense(now), i].slice(-INCENSE_MAX_PER_HALL);
         await this.ctx.storage.put('incense', this.incense);
-        this.broadcast({ t: 'inc', i });
+        this.broadcast({ t: 'inc', i }, ws); // người thắp đã tự hiển thị
         break;
       }
     }

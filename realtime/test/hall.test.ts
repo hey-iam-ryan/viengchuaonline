@@ -126,3 +126,12 @@ test('gian có người thì đặt alarm heartbeat; alarm báo lại số ngư�
   await sleep(100);
   expect(await lobby.total()).toBe(1);
 });
+
+test('người thắp hương không nhận lại sự kiện của chính mình (tránh nhân đôi)', async () => {
+  const a = await join(31);
+  const b = await join(31);
+  a.c.send({ t: 'inc', b: 'hall' });
+  await b.c.next('inc');
+  await sleep(200);
+  expect(a.c.msgs.filter((m) => m.t === 'inc')).toHaveLength(0);
+});
