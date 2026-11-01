@@ -124,7 +124,9 @@ test('gian có người thì đặt alarm heartbeat; alarm báo lại số ngư�
   await runInDurableObject(lobby, async (_i: unknown, s: DurableObjectState) => s.storage.deleteAll());
   expect(await runDurableObjectAlarm(hall)).toBe(true);
   await sleep(100);
-  expect(await lobby.total()).toBe(1);
+  // chỉ xét gian 30: các gian của test khác trong file có thể cũng đang báo về Lobby
+  const c30 = await runInDurableObject(lobby, async (_i: unknown, s: DurableObjectState) => (await s.storage.get<any>('counts'))?.[30]?.c);
+  expect(c30).toBe(1);
 });
 
 test('người thắp hương không nhận lại sự kiện của chính mình (tránh nhân đôi)', async () => {
