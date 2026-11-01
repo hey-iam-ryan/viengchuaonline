@@ -4,18 +4,28 @@ import type { Env } from './env';
 
 /** Ngưỡng mềm: để chừa chỗ cho người vào cùng bạn bè và bù cho số đếm trễ. */
 export const SOFT_CAP = 90;
-type Counts = Record<number, number>;
+/** Gian không báo lại trong khoảng này coi như trống (gian bị reset/deploy không kịp báo 0). */
+export const STALE_MS = 150_000;
+type Counts = Record<number, { c: number; at: number }>;
 
 export class Lobby extends DurableObject<Env> {
-  private async counts(): Promise<Counts> {
+  private async raw(): Promise<Counts> {
     return (await this.ctx.storage.get<Counts>('counts')) ?? {};
+  }
+
+  /** Số người hiện tại mỗi gian, bỏ các báo cáo đã cũ. */
+  private async counts(): Promise<Record<number, number>> {
+    const now = Date.now();
+    const out: Record<number, number> = {};
+    for (const [h, v] of Object.entries(await this.raw())) if (v && now - v.at < STALE_MS) out[Number(h)] = v.c;
+    return out;
   }
 
   async report(hall: number, count: number): Promise<void> {
     if (!Number.isInteger(hall) || hall < 0 || hall >= HALL_COUNT) return;
     if (!Number.isFinite(count) || count < 0) return;
-    const c = await this.counts();
-    c[hall] = Math.min(HALL_CAPACITY, Math.floor(count));
+    const c = await this.raw();
+    c[hall] = { c: Math.min(HALL_CAPACITY, Math.floor(count)), at: Date.now() };
     await this.ctx.storage.put('counts', c);
   }
 

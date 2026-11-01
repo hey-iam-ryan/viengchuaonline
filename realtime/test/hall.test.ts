@@ -112,3 +112,17 @@ test('rời đi → gone', async () => {
   for (let i = 0; i < 5 && !gone.includes(a.w.id); i++) gone = (await b.c.next('snap')).gone;
   expect(gone).toContain(a.w.id);
 });
+
+test('gian có người thì đặt alarm heartbeat; alarm báo lại số người về Lobby', async () => {
+  const { env } = await import('cloudflare:workers');
+  const { runInDurableObject, runDurableObjectAlarm } = await import('cloudflare:test');
+  await join(30);
+  const hall = (env as any).HALL.get((env as any).HALL.idFromName('hall-30'));
+  const alarm = await runInDurableObject(hall, async (_i: unknown, s: DurableObjectState) => s.storage.getAlarm());
+  expect(alarm).not.toBeNull();
+  const lobby = (env as any).LOBBY.get((env as any).LOBBY.idFromName('lobby'));
+  await runInDurableObject(lobby, async (_i: unknown, s: DurableObjectState) => s.storage.deleteAll());
+  expect(await runDurableObjectAlarm(hall)).toBe(true);
+  await sleep(100);
+  expect(await lobby.total()).toBe(1);
+});

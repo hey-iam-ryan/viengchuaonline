@@ -21,6 +21,8 @@ const FLUSH_MS = 1000 / NET_HZ;
 const MAX_VIOLATIONS = 20;
 const REPORT_MS = 1000;
 const RATE = { perSec: 15, burst: 30 };
+/** Còn người thì báo lại Lobby định kỳ, để Lobby phân biệt gian sống với gian đã reset. */
+export const HEARTBEAT_MS = 60_000;
 
 export class Hall extends DurableObject<Env> {
   private hall = -1;
@@ -192,9 +194,20 @@ export class Hall extends DurableObject<Env> {
     }
   }
 
+  async alarm() {
+    const count = this.openSockets().length;
+    this.report(count);
+  }
+
+  private async ensureHeartbeat() {
+    const cur = await this.ctx.storage.getAlarm();
+    if (cur == null || cur <= Date.now()) await this.ctx.storage.setAlarm(Date.now() + HEARTBEAT_MS);
+  }
+
   private report(count: number) {
     this.lastReport = Date.now();
     if (this.hall < 0) return;
+    if (count > 0) this.ctx.waitUntil(this.ensureHeartbeat());
     const lobby = this.env.LOBBY.get(this.env.LOBBY.idFromName('lobby'));
     this.ctx.waitUntil(lobby.report(this.hall, count).catch(() => {}));
   }

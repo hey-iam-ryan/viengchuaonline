@@ -9,6 +9,9 @@ import { createAvatar } from './player/avatar';
 import { AudioManager } from './interact/audio';
 import { IncenseField } from './interact/incense';
 import { Actions } from './interact/actions';
+import { NetClient } from './net/client';
+import { RemotePlayers } from './net/remotePlayers';
+import { REALTIME_URL } from './config';
 
 function fatal(msg: string) {
   const d = document.createElement('div');
@@ -35,7 +38,19 @@ if (!stage) {
   window.addEventListener('pointerdown', unlock, { once: true });
   window.addEventListener('keydown', unlock, { once: true });
   const incense = new IncenseField(scene, temple.burners);
-  const actions = new Actions({ player, audio, incense, send: () => {}, now: () => Date.now() });
+  const stateOf = () => ({ x: player.x, z: player.z, ry: player.ry, p: player.pose });
+  const net = new NetClient({ url: REALTIME_URL });
+  const remotes = new RemotePlayers(scene);
+  const actions = new Actions({ player, audio, incense, send: (m) => net.send(m), now: () => Date.now() });
+  net.on('msg', (m) => {
+    const now = Date.now();
+    remotes.apply(m, now);
+    if (m.t === 'welcome') { incense.sync(m.incense.map((i) => ({ ...i, at: i.at - net.serverOffsetMs })), now); player.takeChanged(); net.sendState(stateOf()); }
+    else if (m.t === 'act') actions.onRemoteAction(m.id, m.a);
+    else if (m.t === 'inc') incense.add({ b: m.i.b, at: m.i.at - net.serverOffsetMs });
+  });
+  net.on('status', (s) => { if (s !== 'online') remotes.clear(); });
+  net.start({ name: actions.progress.name, robe: actions.progress.robe });
 
   const camTarget = new THREE.Vector3();
   const camPos = new THREE.Vector3();
@@ -46,6 +61,8 @@ if (!stage) {
     me.root.rotation.y = player.ry;
     me.setPose(player.pose, performance.now() / 1000);
     incense.update(dt, Date.now());
+    if (player.changed) { net.sendState(stateOf()); player.takeChanged(); }
+    remotes.update(Date.now(), camera.position);
 
     // camera góc nhìn thứ ba
     const inHall = player.x > HALL.minX && player.x < HALL.maxX && player.z > HALL.minZ && player.z < HALL.maxZ;
@@ -64,5 +81,5 @@ if (!stage) {
   });
 
   // dev hook để thử nghiệm
-  if (import.meta.env.MODE !== 'production') (window as any).__vco = { player, controls, nearestZone, actions, audio };
+  if (import.meta.env.MODE !== 'production') (window as any).__vco = { player, controls, nearestZone, actions, audio, net, remotes };
 }

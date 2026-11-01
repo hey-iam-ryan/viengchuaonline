@@ -66,3 +66,14 @@ test('Hall join thật làm tăng total', async () => {
   }
   expect(total).toBeGreaterThanOrEqual(1);
 });
+
+test('báo cáo cũ hơn STALE_MS bị bỏ qua (gian bị reset không kịp báo)', async () => {
+  await lobby().report(5, 40);
+  await lobby().report(6, 2);
+  await runInDurableObject(lobby(), async (_i: unknown, state: DurableObjectState) => {
+    const c = (await state.storage.get<any>('counts'))!;
+    c[5].at = Date.now() - 10 * 60_000;
+    await state.storage.put('counts', c);
+  });
+  expect((await getJson('/stats')).total).toBe(2);
+});
