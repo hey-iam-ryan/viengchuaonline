@@ -1,9 +1,17 @@
 import { GATE_PILLARS, OBSTACLES, type Box } from '@vco/shared/world';
 
-/** Vật cản cao hơn camera: 5 bức tường chánh điện (OBSTACLES[0..4]) và khối mái cổng tam quan. */
-const gateZ = GATE_PILLARS[0];
-const GATE_ROOF: Box = { minX: -9.5, maxX: 9.5, minZ: gateZ.minZ - 0.7, maxZ: gateZ.maxZ + 0.7 };
-const WALLS: Box[] = [...OBSTACLES.slice(0, 5), GATE_ROOF];
+/** Vật cản cao hơn camera: 5 bức tường chánh điện (OBSTACLES[0..4]). */
+const WALLS: Box[] = OBSTACLES.slice(0, 5);
+
+/** Vùng mái cổng tam quan: lối giữa để trống nên camera đi qua được, chỉ cần thấp hơn mái. */
+const gate = GATE_PILLARS[0];
+const GATE_ZONE: Box = { minX: -9.5, maxX: 9.5, minZ: gate.minZ - 1.2, maxZ: gate.maxZ + 1.2 };
+export const GATE_CAM_MAX_Y = 4.0;
+
+export function capCameraHeight(x: number, z: number, y: number): number {
+  const inGate = x > GATE_ZONE.minX && x < GATE_ZONE.maxX && z > GATE_ZONE.minZ && z < GATE_ZONE.maxZ;
+  return inGate ? Math.min(y, GATE_CAM_MAX_Y) : y;
+}
 const MARGIN = 0.3;
 
 /** Thời điểm t∈[0,1] đoạn P→C chạm hộp b (đã nới MARGIN), hoặc null. Thuật toán slab. */

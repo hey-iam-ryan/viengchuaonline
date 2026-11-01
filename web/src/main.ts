@@ -6,7 +6,7 @@ import { buildTemple } from './scene/temple';
 import { LocalPlayer } from './player/localPlayer';
 import { Controls } from './player/controls';
 import { createAvatar, type Avatar } from './player/avatar';
-import { clampCamera } from './player/camera';
+import { capCameraHeight, clampCamera } from './player/camera';
 import { AudioManager } from './interact/audio';
 import { IncenseField } from './interact/incense';
 import { LanternField } from './interact/lanterns';
@@ -19,6 +19,9 @@ import { formatCount } from './ui/hud';
 import { getLang } from './ui/i18n';
 import { nearestPlayer } from './net/nearby';
 import { FloatLayer } from './ui/floatText';
+import { buildFestive } from './scene/festive';
+import { lunarOf, occasionOf } from '@vco/shared/lunar';
+import { occasionLabel } from './ui/occasion';
 import { Actions } from './interact/actions';
 import { NetClient } from './net/client';
 import { RemotePlayers } from './net/remotePlayers';
@@ -57,6 +60,7 @@ if (!stage) {
   const player = new LocalPlayer();
   const audio = new AudioManager();
   const incense = new IncenseField(scene, temple.burners);
+  const festive = buildFestive(scene);
   const lanterns = new LanternField(scene);
   const wishTree = new WishTree(scene);
   const net = new NetClient({ url: REALTIME_URL });
@@ -108,6 +112,11 @@ if (!stage) {
   let entered = false;
 
   const shareBase = location.origin + location.pathname;
+  const occToday = occasionLabel(lunarOf(Date.now()));
+  if (occToday) queueMicrotask(() => {
+    const el = document.querySelector<HTMLElement>('[data-occasion]');
+    if (el) el.textContent = t('occ.welcome', { occ: occToday });
+  });
   const prefer = preferredHall(location.search);
   if (REALTIME_URL)
     fetch(`${REALTIME_URL}/stats`).then((r) => r.json()).then((st) => {
@@ -152,6 +161,7 @@ if (!stage) {
   let lastSky = -Infinity;
   let firstFrame = true;
   const applyDaylight = (now: number) => {
+    festive.setOccasion(occasionOf(lunarOf(now + net.serverOffsetMs)));
     const d = daylightAt(vnHour(now + net.serverOffsetMs));
     (scene.background as THREE.Color).setHex(d.sky);
     scene.fog?.color.setHex(d.sky);
@@ -163,6 +173,7 @@ if (!stage) {
     for (const l of temple.lights) l.intensity = (l === temple.lights[0] ? 18 : 10) * (1 + d.night * 0.8);
     setGlowNight(temple.glows, d.night);
     setGlowNight(lanterns.glows, d.night);
+    setGlowNight(festive.glows, d.night);
   };
   stage.onFrame((dt) => {
     const now = Date.now();
@@ -203,6 +214,7 @@ if (!stage) {
       const c = clampCamera(player.x, player.z, camPos.x, camPos.z);
       camPos.x = c.x;
       camPos.z = c.z;
+      camPos.y = capCameraHeight(c.x, c.z, camPos.y);
     }
     camera.position.lerp(camPos, Math.min(1, dt * 8));
     camTarget.set(player.x, 1.0, player.z);

@@ -14,6 +14,8 @@ import { PRAYERS, type Wish } from '@vco/shared/protocol';
 import type { CardKind } from './shareCard';
 import { Bow108, BOW_TARGET } from '../interact/bow108';
 import { Pose } from '@vco/shared/protocol';
+import { lunarOf } from '@vco/shared/lunar';
+import { lunarShort, occasionLabel } from './occasion';
 
 export function formatCountdown(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -360,7 +362,13 @@ export function createHud(d: HudDeps) {
       const now = Date.now();
       const c = ceremonyStatus(now + d.net.serverOffsetMs);
       ceremony.dataset.active = String(c.active);
-      ceremony.textContent = c.active ? t('ceremony.active') : t('ceremony.next', { time: formatVnTime(c.startMs), left: formatCountdown(c.startMs - now - d.net.serverOffsetMs) });
+      const lunar = lunarOf(now + d.net.serverOffsetMs);
+      const occ = occasionLabel(lunar);
+      ceremony.dataset.occasion = String(!!occ);
+      ceremony.replaceChildren(
+        h('span', { class: 'cer-day' }, occ ?? lunarShort(lunar)),
+        h('span', { class: 'cer-time' }, c.active ? t('ceremony.active') : t('ceremony.next', { time: formatVnTime(c.startMs), left: formatCountdown(c.startMs - now - d.net.serverOffsetMs) })),
+      );
       syncAudio();
     },
   };

@@ -134,3 +134,15 @@ test('đứng ở sân cũng vái được; 108 lạy liên tục đếm theo nh
   await page.getByRole('button', { name: 'Dừng' }).click();
   await expect(page.getByTestId('bow108-count')).toBeHidden();
 });
+
+test('ngày Rằm: màn chào báo dịp lễ, thanh lễ hiện "Rằm tháng 9"; ngày thường hiện ngày âm lịch', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-10-24T03:00:00Z')); // 10:00 VN, 15/9 âm lịch
+  await page.goto('./');
+  await expect(page.getByText('Hôm nay 🌕 Rằm tháng 9')).toBeVisible();
+  await page.getByRole('button', { name: 'Vào chùa' }).click();
+  await expect(page.locator('.ceremony .cer-day')).toHaveText('🌕 Rằm tháng 9');
+  await page.clock.setFixedTime(new Date('2026-11-01T03:00:00Z')); // 23/9 âm lịch
+  await page.reload();
+  await page.getByRole('button', { name: 'Vào chùa' }).click();
+  await expect(page.locator('.ceremony .cer-day')).toHaveText('23/9 âm lịch');
+});
