@@ -3,9 +3,34 @@ import type { Env } from './env';
 export { Hall } from './hall';
 export { Lobby } from './lobby';
 
+function allowedOrigin(req: Request, env: Env): string | null {
+  const origin = req.headers.get('Origin');
+  if (!origin) return null;
+  const list = env.ALLOWED_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean);
+  return list.includes(origin) ? origin : null;
+}
+
+const json = (body: unknown, origin: string, extra: Record<string, string> = {}) =>
+  new Response(JSON.stringify(body), {
+    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin, Vary: 'Origin', ...extra },
+  });
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
+    const origin = allowedOrigin(req, env);
+    if (!origin) return new Response('Forbidden', { status: 403 });
+    if (req.method === 'OPTIONS')
+      return new Response(null, { headers: { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Methods': 'GET', Vary: 'Origin' } });
+
+    const lobby = () => env.LOBBY.get(env.LOBBY.idFromName('lobby'));
+
+    if (url.pathname === '/lobby') {
+      const exclude = (url.searchParams.get('exclude') ?? '').split(',').filter((s) => s.trim() !== '').map(Number).filter(Number.isInteger);
+      return json(await lobby().assign(exclude), origin, { 'Cache-Control': 'no-store' });
+    }
+    if (url.pathname === '/stats') return json({ total: await lobby().total() }, origin, { 'Cache-Control': 'max-age=5' });
+
     const m = url.pathname.match(/^\/hall\/(\d+)$/);
     if (m) {
       const n = Number(m[1]);
