@@ -1,5 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { HALL_CAPACITY, HALL_COUNT } from '@vco/shared/protocol';
+import { addStats, emptyStats, vnDay, type DayStats } from '@vco/shared/stats';
 import type { Env } from './env';
 
 /** Ngưỡng mềm: để chừa chỗ cho người vào cùng bạn bè và bù cho số đếm trễ. */
@@ -21,20 +22,34 @@ export class Lobby extends DurableObject<Env> {
     return out;
   }
 
-  async report(hall: number, count: number): Promise<void> {
+  async report(hall: number, count: number, deltas?: Partial<DayStats>): Promise<void> {
     if (!Number.isInteger(hall) || hall < 0 || hall >= HALL_COUNT) return;
+    if (deltas) await this.addToday(deltas);
     if (!Number.isFinite(count) || count < 0) return;
     const c = await this.raw();
     c[hall] = { c: Math.min(HALL_CAPACITY, Math.floor(count)), at: Date.now() };
     await this.ctx.storage.put('counts', c);
   }
 
-  async assign(exclude: number[]): Promise<{ hall: number; total: number }> {
+  private async addToday(d: Partial<DayStats>) {
+    const day = vnDay(Date.now());
+    const cur = (await this.ctx.storage.get<{ day: string; s: DayStats }>('stats')) ?? { day, s: emptyStats() };
+    const base = cur.day === day ? cur.s : emptyStats();
+    await this.ctx.storage.put('stats', { day, s: addStats(base, d) });
+  }
+
+  async today(): Promise<DayStats> {
+    const cur = await this.ctx.storage.get<{ day: string; s: DayStats }>('stats');
+    return cur && cur.day === vnDay(Date.now()) ? cur.s : emptyStats();
+  }
+
+  async assign(exclude: number[], prefer = -1): Promise<{ hall: number; total: number }> {
     const c = await this.counts();
     const ex = new Set(exclude);
     const total = Object.values(c).reduce((a, b) => a + b, 0);
     let pick = -1;
-    for (let h = 0; h < HALL_COUNT; h++) {
+    if (Number.isInteger(prefer) && prefer >= 0 && prefer < HALL_COUNT && !ex.has(prefer) && (c[prefer] ?? 0) < HALL_CAPACITY) pick = prefer;
+    else for (let h = 0; h < HALL_COUNT; h++) {
       if (ex.has(h)) continue;
       const n = c[h] ?? 0;
       if (n < SOFT_CAP) { pick = h; break; }

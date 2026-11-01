@@ -5,6 +5,25 @@ export const MAX_MSG_BYTES = 512;
 export const INCENSE_TTL_MS = 600_000;
 export const INCENSE_MAX_PER_HALL = 60;
 export const INCENSE_COOLDOWN_MS = 10_000;
+export const LANTERN_TTL_MS = 600_000;
+export const LANTERN_MAX_PER_HALL = 40;
+export const LANTERN_COOLDOWN_MS = 15_000;
+export const WISH_MAX_PER_HALL = 30;
+export const WISH_COOLDOWN_MS = 30_000;
+
+/** Lời nguyện soạn sẵn — không cho gõ tự do để khỏi phải kiểm duyệt. */
+export const PRAYERS: readonly { vi: string; en: string }[] = [
+  { vi: 'Cầu cho gia đình bình an, mạnh khoẻ', en: 'Peace and health for my family' },
+  { vi: 'Cầu cho cha mẹ sống lâu trăm tuổi', en: 'Long life for my parents' },
+  { vi: 'Cầu siêu cho người thân đã khuất', en: 'Peaceful rest for loved ones who have passed' },
+  { vi: 'Cầu cho công việc hanh thông, thuận lợi', en: 'Success and ease in my work' },
+  { vi: 'Cầu cho học hành tấn tới, thi cử đỗ đạt', en: 'Progress in my studies and exams' },
+  { vi: 'Cầu cho tâm an, buông bỏ phiền muộn', en: 'A calm mind, free of worries' },
+  { vi: 'Cầu cho người bệnh sớm bình phục', en: 'Quick recovery for the sick' },
+  { vi: 'Cầu cho tình duyên viên mãn', en: 'Love and harmony' },
+  { vi: 'Cầu cho quốc thái dân an, mưa thuận gió hoà', en: 'Peace for the nation and good weather' },
+  { vi: 'Cầu cho chúng sinh bớt khổ đau', en: 'Less suffering for all beings' },
+];
 
 export type Robe = 'lam' | 'nau' | 'trang' | 'vang';
 export const ROBES: readonly Robe[] = ['lam', 'nau', 'trang', 'vang'];
@@ -18,18 +37,24 @@ export type Pose = (typeof Pose)[keyof typeof Pose];
 
 export interface PlayerState { id: string; n: string; r: Robe; x: number; z: number; ry: number; p: Pose }
 export interface Incense { b: BurnerId; at: number }
+export interface Lantern { x: number; z: number; at: number; s: number }
+export interface Wish { n: string; p: number; at: number }
 
 export type ClientMsg =
   | { t: 'hello'; name: string; robe: Robe }
   | { t: 's'; x: number; z: number; ry: number; p: Pose }
   | { t: 'a'; a: Action }
-  | { t: 'inc'; b: BurnerId };
+  | { t: 'inc'; b: BurnerId }
+  | { t: 'den'; x: number; z: number }
+  | { t: 'ng'; p: number };
 
 export type ServerMsg =
-  | { t: 'welcome'; id: string; hall: number; now: number; players: PlayerState[]; incense: Incense[] }
+  | { t: 'welcome'; id: string; hall: number; now: number; players: PlayerState[]; incense: Incense[]; lanterns: Lantern[]; wishes: Wish[] }
   | { t: 'snap'; u: PlayerState[]; gone: string[] }
   | { t: 'act'; id: string; a: Action }
   | { t: 'inc'; i: Incense }
+  | { t: 'den'; l: Lantern }
+  | { t: 'ng'; w: Wish }
   | { t: 'full' };
 
 const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
@@ -57,6 +82,10 @@ export function parseClientMsg(raw: string | ArrayBuffer): ClientMsg | null {
       return oneOf(ACTIONS, m.a) ? { t: 'a', a: m.a } : null;
     case 'inc':
       return oneOf(BURNERS, m.b) ? { t: 'inc', b: m.b } : null;
+    case 'den':
+      return num(m.x) && num(m.z) ? { t: 'den', x: m.x, z: m.z } : null;
+    case 'ng':
+      return Number.isInteger(m.p) && m.p >= 0 && m.p < PRAYERS.length ? { t: 'ng', p: m.p } : null;
     default:
       return null;
   }

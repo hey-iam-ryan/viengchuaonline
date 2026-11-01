@@ -135,3 +135,32 @@ test('người thắp hương không nhận lại sự kiện của chính mình
   await sleep(200);
   expect(a.c.msgs.filter((m) => m.t === 'inc')).toHaveLength(0);
 });
+
+test('thả đèn hoa đăng: kẹp vào hồ, cooldown, người mới vào thấy, không gửi lại người thả', async () => {
+  const a = await join(40);
+  const b = await join(40);
+  expect(a.w.lanterns).toEqual([]);
+  a.c.send({ t: 'den', x: 999, z: 4 });
+  a.c.send({ t: 'den', x: -7, z: 4 });
+  const got = await b.c.next('den');
+  const { POND } = await import('@vco/shared/world');
+  expect(got.l.x).toBeLessThanOrEqual(POND.maxX);
+  await sleep(200);
+  expect(b.c.msgs.filter((m) => m.t === 'den')).toHaveLength(0);
+  expect(a.c.msgs.filter((m) => m.t === 'den')).toHaveLength(0);
+  const c = await join(40);
+  expect(c.w.lanterns).toHaveLength(1);
+});
+
+test('lời nguyện: kèm pháp danh đã làm sạch, cooldown, giữ cho người mới', async () => {
+  const a = await join(41, 'Minh Tâm');
+  const b = await join(41);
+  a.c.send({ t: 'ng', p: 0 });
+  a.c.send({ t: 'ng', p: 1 });
+  const w = await b.c.next('ng');
+  expect(w.w).toMatchObject({ n: 'Minh Tâm', p: 0 });
+  await sleep(200);
+  expect(b.c.msgs.filter((m) => m.t === 'ng')).toHaveLength(0);
+  const c = await join(41);
+  expect(c.w.wishes.map((x) => x.p)).toEqual([0]);
+});

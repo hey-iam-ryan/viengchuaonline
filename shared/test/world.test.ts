@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { BOUNDS, OBSTACLES, PLAYER_RADIUS, SPAWN, ZONES, nearestZone, resolveCollision } from '../src/world';
+import { BOUNDS, OBSTACLES, PLAYER_RADIUS, POND, SPAWN, ZONES, clampToPond, nearestZone, resolveCollision } from '../src/world';
 
 const outside = (x: number, z: number, b: { minX: number; maxX: number; minZ: number; maxZ: number }) =>
   x < b.minX - PLAYER_RADIUS + 1e-6 || x > b.maxX + PLAYER_RADIUS - 1e-6 || z < b.minZ - PLAYER_RADIUS + 1e-6 || z > b.maxZ + PLAYER_RADIUS - 1e-6;
@@ -43,4 +43,15 @@ test('có 20 bồ đoàn, zone gần', () => {
   expect(nearestZone(SPAWN.x, SPAWN.z)).toBeNull();
   expect(ZONES.find((z) => z.id === 'burner-yard')?.burner).toBe('yard');
   expect(ZONES.find((z) => z.id === 'burner-hall')?.burner).toBe('hall');
+});
+
+test('có chỗ thả đèn ở hồ sen và cây lời nguyện', () => {
+  expect(ZONES.find((z) => z.kind === 'pond')).toBeDefined();
+  expect(ZONES.find((z) => z.kind === 'wish')).toBeDefined();
+});
+test('clampToPond đưa toạ độ vào trong mặt hồ', () => {
+  const p = clampToPond(100, -100);
+  expect(p.x).toBeLessThanOrEqual(POND.maxX - 0.3);
+  expect(p.z).toBeGreaterThanOrEqual(POND.minZ + 0.3);
+  expect(clampToPond(-7, 4)).toEqual({ x: -7, z: 4 });
 });

@@ -34,7 +34,7 @@ test('total = tổng counts; stats có cache header', async () => {
   await lobby().report(4, 5);
   await lobby().report(4, 6);
   const res = await get('/stats');
-  expect(await res.json()).toEqual({ total: 13 });
+  expect(await res.json()).toMatchObject({ total: 13 });
   expect(res.headers.get('Cache-Control')).toBe('max-age=5');
   expect(res.headers.get('Access-Control-Allow-Origin')).toBe(ORIGIN);
 });
@@ -83,4 +83,30 @@ test('giữ chỗ khi xếp: nhiều người vào dồn dập trước khi gian
   for (let i = 0; i < 95; i++) halls.push((await getJson('/lobby')).hall);
   expect(halls.filter((h) => h === 0)).toHaveLength(90);
   expect(halls.slice(90)).toEqual([1, 1, 1, 1, 1]);
+});
+
+test('rủ bạn: prefer gian còn chỗ thì vào đúng gian đó', async () => {
+  expect((await getJson('/lobby?prefer=7')).hall).toBe(7);
+  await lobby().report(8, 100);
+  expect((await getJson('/lobby?prefer=8')).hall).toBe(0);
+  expect((await getJson('/lobby?prefer=abc')).hall).toBe(0);
+});
+
+test('thống kê trong ngày: Hall gửi số liệu gộp, /stats trả về today', async () => {
+  await lobby().report(1, 2, { incense: 3, bows: 5, lanterns: 1, wishes: 2 });
+  await lobby().report(2, 1, { incense: 1 });
+  expect(await getJson('/stats')).toEqual({ total: 3, today: { incense: 4, bows: 5, lanterns: 1, wishes: 2 } });
+});
+
+test('Hall gộp số lạy/hương rồi báo về Lobby', async () => {
+  const a = await join(42);
+  a.c.send({ t: 'inc', b: 'yard' });
+  a.c.send({ t: 'a', a: 'bow' });
+  let today: any = {};
+  for (let i = 0; i < 30 && !(today.incense >= 1 && today.bows >= 1); i++) {
+    await sleep(100);
+    today = (await getJson('/stats')).today;
+  }
+  expect(today.incense).toBeGreaterThanOrEqual(1);
+  expect(today.bows).toBeGreaterThanOrEqual(1);
 });

@@ -27,9 +27,14 @@ export default {
 
     if (url.pathname === '/lobby') {
       const exclude = (url.searchParams.get('exclude') ?? '').split(',').filter((s) => s.trim() !== '').map(Number).filter(Number.isInteger);
-      return json(await lobby().assign(exclude), origin, { 'Cache-Control': 'no-store' });
+      const prefer = Number(url.searchParams.get('prefer') ?? -1);
+      return json(await lobby().assign(exclude, Number.isInteger(prefer) ? prefer : -1), origin, { 'Cache-Control': 'no-store' });
     }
-    if (url.pathname === '/stats') return json({ total: await lobby().total() }, origin, { 'Cache-Control': 'max-age=5' });
+    if (url.pathname === '/stats') {
+      const l = lobby();
+      const [total, today] = await Promise.all([l.total(), l.today()]);
+      return json({ total, today }, origin, { 'Cache-Control': 'max-age=5' });
+    }
 
     const m = url.pathname.match(/^\/hall\/(\d+)$/);
     if (m) {

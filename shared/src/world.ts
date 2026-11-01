@@ -1,7 +1,7 @@
 import type { BurnerId } from './protocol';
 
 export interface Box { minX: number; maxX: number; minZ: number; maxZ: number }
-export type ZoneKind = 'cushion' | 'burner' | 'bell' | 'mo';
+export type ZoneKind = 'cushion' | 'burner' | 'bell' | 'mo' | 'pond' | 'wish';
 export interface Zone { id: string; kind: ZoneKind; x: number; z: number; r: number; burner?: BurnerId }
 
 const box = (minX: number, maxX: number, minZ: number, maxZ: number): Box => ({ minX, maxX, minZ, maxZ });
@@ -20,6 +20,9 @@ export const HALL_BURNER: Box = box(-0.5, 0.5, -21.5, -20.5);
 export const BELL_TOWER: Box = box(11, 13, -3, -1);
 export const MO_STAND: Box = box(3.25, 3.75, -22.25, -21.75);
 export const GATE_PILLARS: Box[] = [box(-4, -3, 17.5, 18.5), box(3, 4, 17.5, 18.5), box(-8, -7, 17.5, 18.5), box(7, 8, 17.5, 18.5)];
+
+/** Cây bồ đề treo lời nguyện. */
+export const WISH_TREE = { x: 14, z: 8, s: 1.6 };
 
 /** Gốc cây trang trí ven khuôn viên (cũng là vật cản). */
 export const TREES: { x: number; z: number; s: number }[] = [
@@ -41,6 +44,7 @@ export const OBSTACLES: Box[] = [
   BELL_TOWER,
   MO_STAND,
   ...GATE_PILLARS,
+  box(WISH_TREE.x - 0.6, WISH_TREE.x + 0.6, WISH_TREE.z - 0.6, WISH_TREE.z + 0.6),
   ...TREES.map((t) => box(t.x - 0.4 * t.s, t.x + 0.4 * t.s, t.z - 0.4 * t.s, t.z + 0.4 * t.s)),
 ];
 
@@ -55,7 +59,16 @@ export const ZONES: Zone[] = [
   { id: 'burner-yard', kind: 'burner', x: 0, z: 5.6, r: 1.6, burner: 'yard' },
   { id: 'bell', kind: 'bell', x: 12, z: 0.2, r: 1.6 },
   { id: 'mo', kind: 'mo', x: 4.6, z: -22, r: 1.2 },
+  { id: 'pond', kind: 'pond', x: -3.2, z: 4, r: 1.6 },
+  { id: 'pond-n', kind: 'pond', x: -7, z: 9, r: 1.6 },
+  { id: 'wish', kind: 'wish', x: 12.6, z: 8, r: 1.6 },
 ];
+
+/** Kẹp toạ độ đèn hoa đăng vào trong mặt hồ (chừa mép 0.3m). */
+export function clampToPond(x: number, z: number): { x: number; z: number } {
+  const m = 0.3;
+  return { x: Math.max(POND.minX + m, Math.min(POND.maxX - m, x)), z: Math.max(POND.minZ + m, Math.min(POND.maxZ - m, z)) };
+}
 
 export const SPAWN = { x: 0, z: 15, ry: 0 };
 export const PLAYER_RADIUS = 0.35;

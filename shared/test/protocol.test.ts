@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { parseClientMsg } from '../src/protocol';
+import { parseClientMsg, PRAYERS } from '../src/protocol';
 
 test('parse hợp lệ', () => {
   expect(parseClientMsg('{"t":"s","x":1,"z":2,"ry":0.5,"p":1}')).toEqual({ t: 's', x: 1, z: 2, ry: 0.5, p: 1 });
@@ -27,4 +27,16 @@ test('loại tin rác', () => {
 
 test('chỉ giữ trường đã biết', () => {
   expect(parseClientMsg('{"t":"a","a":"bow","evil":1}')).toEqual({ t: 'a', a: 'bow' });
+});
+
+test('đèn hoa đăng & lời nguyện', () => {
+  expect(parseClientMsg('{"t":"den","x":-7,"z":4}')).toEqual({ t: 'den', x: -7, z: 4 });
+  expect(parseClientMsg('{"t":"ng","p":2}')).toEqual({ t: 'ng', p: 2 });
+  expect(parseClientMsg(`{"t":"ng","p":${PRAYERS.length}}`)).toBeNull();
+  expect(parseClientMsg('{"t":"ng","p":1.5}')).toBeNull();
+  expect(parseClientMsg('{"t":"den","x":"a","z":4}')).toBeNull();
+});
+test('lời nguyện soạn sẵn có đủ vi & en', () => {
+  expect(PRAYERS.length).toBeGreaterThanOrEqual(6);
+  for (const p of PRAYERS) { expect(p.vi.length).toBeGreaterThan(5); expect(p.en.length).toBeGreaterThan(5); }
 });

@@ -1,9 +1,11 @@
 import { DurableObject } from 'cloudflare:workers';
 import {
-  HALL_CAPACITY, INCENSE_COOLDOWN_MS, INCENSE_MAX_PER_HALL, INCENSE_TTL_MS, NET_HZ,
-  parseClientMsg, type Incense, type PlayerState, type ServerMsg,
+  HALL_CAPACITY, INCENSE_COOLDOWN_MS, INCENSE_MAX_PER_HALL, INCENSE_TTL_MS, LANTERN_COOLDOWN_MS, LANTERN_MAX_PER_HALL,
+  LANTERN_TTL_MS, NET_HZ, WISH_COOLDOWN_MS, WISH_MAX_PER_HALL,
+  parseClientMsg, type Incense, type Lantern, type PlayerState, type ServerMsg, type Wish,
 } from '@vco/shared/protocol';
-import { resolveCollision, SPAWN } from '@vco/shared/world';
+import { clampToPond, resolveCollision, SPAWN } from '@vco/shared/world';
+import { emptyStats, type DayStats } from '@vco/shared/stats';
 import { sanitizeName } from '@vco/shared/name';
 import { TokenBucket } from '@vco/shared/rateLimit';
 import type { Env } from './env';
@@ -14,6 +16,8 @@ interface Attachment {
   hall: number;
   state: PlayerState | null; // null = chưa hello
   lastIncense: number;
+  lastLantern?: number;
+  lastWish?: number;
   violations: number;
 }
 
@@ -27,6 +31,9 @@ export const HEARTBEAT_MS = 60_000;
 export class Hall extends DurableObject<Env> {
   private hall = -1;
   private incense: Incense[] = [];
+  private lanterns: Lantern[] = [];
+  private wishes: Wish[] = [];
+  private pending: DayStats = emptyStats();
   private buckets = new WeakMap<WebSocket, TokenBucket>();
   private dirty = new Set<string>();
   private gone: string[] = [];
@@ -39,6 +46,8 @@ export class Hall extends DurableObject<Env> {
     super(ctx, env);
     ctx.blockConcurrencyWhile(async () => {
       this.incense = (await ctx.storage.get<Incense[]>('incense')) ?? [];
+      this.lanterns = (await ctx.storage.get<Lantern[]>('lanterns')) ?? [];
+      this.wishes = (await ctx.storage.get<Wish[]>('wishes')) ?? [];
       this.hall = (await ctx.storage.get<number>('hall')) ?? -1;
     });
   }
@@ -81,7 +90,10 @@ export class Hall extends DurableObject<Env> {
       att.state = { id: att.id, n: sanitizeName(msg.name), r: msg.robe, x: SPAWN.x, z: SPAWN.z, ry: SPAWN.ry, p: 0 };
       ws.serializeAttachment(att);
       const players = this.players().filter((p) => p.id !== att.id);
-      this.send(ws, { t: 'welcome', id: att.id, hall: att.hall, now, players, incense: this.liveIncense(now) });
+      this.send(ws, {
+        t: 'welcome', id: att.id, hall: att.hall, now, players,
+        incense: this.liveIncense(now), lanterns: this.liveLanterns(now), wishes: this.wishes,
+      });
       this.markDirty(att.id);
       return;
     }
@@ -95,8 +107,32 @@ export class Hall extends DurableObject<Env> {
         break;
       }
       case 'a':
+        if (msg.a === 'bow') this.count('bows');
         this.broadcast({ t: 'act', id: att.id, a: msg.a }, ws);
         break;
+      case 'den': {
+        if (now - (att.lastLantern ?? 0) < LANTERN_COOLDOWN_MS) return;
+        att.lastLantern = now;
+        ws.serializeAttachment(att);
+        const p = clampToPond(msg.x, msg.z);
+        const l: Lantern = { x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100, at: now, s: Math.floor(Math.random() * 1000) };
+        this.lanterns = [...this.liveLanterns(now), l].slice(-LANTERN_MAX_PER_HALL);
+        await this.ctx.storage.put('lanterns', this.lanterns);
+        this.count('lanterns');
+        this.broadcast({ t: 'den', l }, ws);
+        break;
+      }
+      case 'ng': {
+        if (now - (att.lastWish ?? 0) < WISH_COOLDOWN_MS) return;
+        att.lastWish = now;
+        ws.serializeAttachment(att);
+        const w: Wish = { n: att.state.n, p: msg.p, at: now };
+        this.wishes = [...this.wishes, w].slice(-WISH_MAX_PER_HALL);
+        await this.ctx.storage.put('wishes', this.wishes);
+        this.count('wishes');
+        this.broadcast({ t: 'ng', w }, ws);
+        break;
+      }
       case 'inc': {
         if (now - att.lastIncense < INCENSE_COOLDOWN_MS) return;
         att.lastIncense = now;
@@ -104,6 +140,7 @@ export class Hall extends DurableObject<Env> {
         const i: Incense = { b: msg.b, at: now };
         this.incense = [...this.liveIncense(now), i].slice(-INCENSE_MAX_PER_HALL);
         await this.ctx.storage.put('incense', this.incense);
+        this.count('incense');
         this.broadcast({ t: 'inc', i }, ws); // người thắp đã tự hiển thị
         break;
       }
@@ -140,6 +177,16 @@ export class Hall extends DurableObject<Env> {
       if (a?.state) out.push(a.state);
     }
     return out;
+  }
+
+  private liveLanterns(now: number) {
+    return this.lanterns.filter((l) => now - l.at < LANTERN_TTL_MS);
+  }
+
+  /** Gộp số liệu trong ngày, gửi kèm lần báo cáo Lobby kế tiếp (không tốn thêm request). */
+  private count(k: keyof DayStats) {
+    this.pending[k]++;
+    this.scheduleReport();
   }
 
   private liveIncense(now: number) {
@@ -209,6 +256,8 @@ export class Hall extends DurableObject<Env> {
     if (this.hall < 0) return;
     if (count > 0) this.ctx.waitUntil(this.ensureHeartbeat());
     const lobby = this.env.LOBBY.get(this.env.LOBBY.idFromName('lobby'));
-    this.ctx.waitUntil(lobby.report(this.hall, count).catch(() => {}));
+    const deltas = this.pending;
+    this.pending = emptyStats();
+    this.ctx.waitUntil(lobby.report(this.hall, count, deltas).catch(() => {}));
   }
 }
