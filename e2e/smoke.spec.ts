@@ -96,7 +96,7 @@ test('manifest PWA hợp lệ, có icon', async ({ page, request }) => {
 test('thả đèn hoa đăng ở hồ sen & gửi lời nguyện ở cây bồ đề', async ({ page }) => {
   await page.goto('./');
   await page.getByRole('button', { name: 'Vào chùa' }).click();
-  await expect(page.locator('#loading')).toHaveCount(0);
+  await expect(page.locator('#loading')).toHaveCount(0, { timeout: 30_000 }); // CI không có GPU: khung hình đầu chậm
   await page.evaluate(() => { const v = (window as any).__vco; const z = v.zones.find((z: any) => z.id === 'pond'); v.player.x = z.x; v.player.z = z.z; });
   await page.getByRole('button', { name: 'Thả đèn hoa đăng' }).click();
   await expect(page.getByText('Đèn hoa đăng đã được thả')).toBeVisible();
