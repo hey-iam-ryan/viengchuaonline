@@ -32,7 +32,8 @@ export const ACTIONS: readonly Action[] = ['bow', 'mo', 'chuong', 'beads'];
 export type BurnerId = 'hall' | 'yard';
 export const BURNERS: readonly BurnerId[] = ['hall', 'yard'];
 
-export const Pose = { Stand: 0, Walk: 1, Sit: 2, Bow: 3 } as const;
+/** Bow = lạy sát đất khi ngồi bồ đoàn; Vai = vái khi đứng. */
+export const Pose = { Stand: 0, Walk: 1, Sit: 2, Bow: 3, Vai: 4 } as const;
 export type Pose = (typeof Pose)[keyof typeof Pose];
 
 export interface PlayerState { id: string; n: string; r: Robe; x: number; z: number; ry: number; p: Pose }
@@ -75,7 +76,7 @@ export function parseClientMsg(raw: string | ArrayBuffer): ClientMsg | null {
     case 'hello':
       return typeof m.name === 'string' && oneOf(ROBES, m.robe) ? { t: 'hello', name: m.name, robe: m.robe } : null;
     case 's':
-      return num(m.x) && num(m.z) && num(m.ry) && oneOf([0, 1, 2, 3], m.p)
+      return num(m.x) && num(m.z) && num(m.ry) && oneOf([0, 1, 2, 3, 4], m.p)
         ? { t: 's', x: m.x, z: m.z, ry: m.ry, p: m.p }
         : null;
     case 'a':

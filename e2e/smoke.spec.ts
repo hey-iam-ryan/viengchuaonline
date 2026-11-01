@@ -117,3 +117,18 @@ test('buổi tối (20:00 giờ VN) trời tối, đèn sáng', async ({ page })
   const bg = await page.evaluate(() => (window as any).__vco.sceneBg());
   expect(bg).toBe(0x1d1c3b);
 });
+
+test('đứng ở sân cũng vái được; 108 lạy liên tục đếm theo nhịp và dừng được', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-11-02T03:00:00Z') });
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Vào chùa' }).click();
+  await page.getByRole('button', { name: 'Vái', exact: true }).click();
+  await expect(page.getByTestId('bow-count')).toHaveText('1');
+  await page.clock.runFor(2000);
+  await page.getByRole('button', { name: '108 lạy' }).click();
+  await expect(page.getByTestId('bow108-count')).toHaveText('0/108');
+  await page.clock.runFor(3600 * 3);
+  await expect(page.getByTestId('bow108-count')).not.toHaveText('0/108');
+  await page.getByRole('button', { name: 'Dừng' }).click();
+  await expect(page.getByTestId('bow108-count')).toBeHidden();
+});

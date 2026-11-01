@@ -3,6 +3,7 @@ import { PLAYER_RADIUS, SPAWN, resolveCollision, type Zone } from '@vco/shared/w
 
 export const WALK_SPEED = 3; // m/s
 export const BOW_SECONDS = 1.6;
+export const VAI_SECONDS = 1.2;
 const DEADZONE = 0.05;
 
 export class LocalPlayer {
@@ -38,9 +39,9 @@ export class LocalPlayer {
       this.set(p.x, p.z, Math.atan2(wx, wz), Pose.Walk);
       return;
     }
-    if (this.pose === Pose.Bow) {
+    if (this.pose === Pose.Bow || this.pose === Pose.Vai) {
       this.bowLeft -= dt;
-      if (this.bowLeft <= 0) this.set(this.x, this.z, this.ry, Pose.Sit);
+      if (this.bowLeft <= 0) this.set(this.x, this.z, this.ry, this.pose === Pose.Bow ? Pose.Sit : Pose.Stand);
       return;
     }
     if (this.pose === Pose.Walk) this.set(this.x, this.z, this.ry, Pose.Stand);
@@ -52,14 +53,21 @@ export class LocalPlayer {
   }
 
   standUp(): void {
-    if (this.pose === Pose.Sit || this.pose === Pose.Bow) this.set(this.x, this.z, this.ry, Pose.Stand);
+    if (this.pose === Pose.Sit || this.pose === Pose.Bow || this.pose === Pose.Vai) this.set(this.x, this.z, this.ry, Pose.Stand);
   }
 
-  /** Bắt đầu một lạy. Chỉ được khi đang ngồi (và không đang lạy). */
+  /** Ngồi bồ đoàn → lạy sát đất; đang đứng → vái. Đang đi/đang lạy thì không. */
   bow(): boolean {
-    if (this.pose !== Pose.Sit) return false;
-    this.bowLeft = BOW_SECONDS;
-    this.set(this.x, this.z, this.ry, Pose.Bow);
-    return true;
+    if (this.pose === Pose.Sit) {
+      this.bowLeft = BOW_SECONDS;
+      this.set(this.x, this.z, this.ry, Pose.Bow);
+      return true;
+    }
+    if (this.pose === Pose.Stand) {
+      this.bowLeft = VAI_SECONDS;
+      this.set(this.x, this.z, this.ry, Pose.Vai);
+      return true;
+    }
+    return false;
   }
 }

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Pose, type Robe } from '@vco/shared/protocol';
-import { BOW_SECONDS } from './localPlayer';
+import { BOW_SECONDS, VAI_SECONDS } from './localPlayer';
 
 export const ROBE_COLOR: Record<Robe, number> = { lam: 0x5a7fb5, nau: 0x7a4a2a, trang: 0xf2eee4, vang: 0xe0a530 };
 const SKIN = new THREE.MeshStandardMaterial({ color: 0xf1c9a0, roughness: 0.8 });
@@ -121,8 +121,16 @@ export function createAvatar(robe: Robe, name: string): Avatar {
         upper.rotation.z = Math.sin(t * 9) * 0.05;
       } else upper.rotation.z = 0;
       if (p === Pose.Bow) {
+        // lạy: quỳ, cúi sát đất (giữ một nhịp) rồi ngẩng lên
         const k = Math.min(1, (t - since) / BOW_SECONDS);
-        upper.rotation.x = Math.sin(k * Math.PI) * 1.15; // cúi sát rồi ngẩng lên
+        const e = k < 0.35 ? Math.sin((k / 0.35) * Math.PI / 2) : k < 0.6 ? 1 : Math.cos(((k - 0.6) / 0.4) * Math.PI / 2);
+        upper.rotation.x = e * 1.4;
+        upper.position.y = 0.22 - e * 0.08;
+      }
+      if (p === Pose.Vai) {
+        // vái: đứng chắp tay, cúi đầu
+        const k = Math.min(1, (t - since) / VAI_SECONDS);
+        upper.rotation.x = Math.sin(k * Math.PI) * 0.75;
       }
     },
     dispose() {

@@ -48,7 +48,7 @@ export class Actions {
     const sitting = p.pose === Pose.Sit || p.pose === Pose.Bow;
     return {
       sit: zone?.kind === 'cushion' && !sitting,
-      bow: p.pose === Pose.Sit,
+      bow: p.pose === Pose.Sit || p.pose === Pose.Stand,
       bell: zone?.kind === 'bell',
       mo: zone?.kind === 'mo',
       incense: zone?.kind === 'burner' ? zone.burner ?? null : null,

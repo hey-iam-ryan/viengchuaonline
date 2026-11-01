@@ -37,11 +37,17 @@ test('xa lư hương thì không thắp được', () => {
   expect(s.a.lightIncense()).toBe(false);
   expect(s.sent).toEqual([]);
 });
-test('không lạy khi đứng', () => {
-  const s = setup('cushion-0');
-  expect(s.a.available()).toMatchObject({ sit: true, bow: false });
+test('đứng ở đâu cũng vái được (tính là một lạy)', () => {
+  const s = setup();
+  expect(s.a.available().bow).toBe(true);
   s.a.bow();
-  expect(s.sent).toEqual([]);
+  expect(s.sent).toEqual([{ t: 'a', a: 'bow' }]);
+  expect(s.a.progress.bowsTotal).toBe(1);
+});
+test('đang đi thì không lạy', () => {
+  const s = setup();
+  s.player.update(0.1, { x: 1, z: 0 }, 0);
+  expect(s.a.available().bow).toBe(false);
 });
 test('ngồi rồi lạy: gửi tin, đếm, báo mốc', () => {
   const s = setup('cushion-0');

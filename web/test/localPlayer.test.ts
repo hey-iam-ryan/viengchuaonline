@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest';
 import { Pose } from '@vco/shared/protocol';
 import { SPAWN, ZONES } from '@vco/shared/world';
-import { LocalPlayer, BOW_SECONDS } from '../src/player/localPlayer';
+import { LocalPlayer, BOW_SECONDS, VAI_SECONDS } from '../src/player/localPlayer';
 
 const cushion = ZONES.find((z) => z.kind === 'cushion')!;
 
@@ -35,7 +35,6 @@ test('dừng → đứng', () => {
 });
 test('lạy chỉ khi ngồi; lạy xong về ngồi; đi thì đứng dậy', () => {
   const p = new LocalPlayer();
-  expect(p.bow()).toBe(false);
   p.sitAt(cushion);
   expect([p.x, p.z, p.pose]).toEqual([cushion.x, cushion.z, Pose.Sit]);
   expect(p.bow()).toBe(true);
@@ -60,4 +59,16 @@ test('changed chỉ bật khi có thay đổi', () => {
   expect(p.changed).toBe(true);
   p.takeChanged();
   expect(p.changed).toBe(false);
+});
+
+test('đứng bấm lạy → vái, xong về đứng; đi thì huỷ', () => {
+  const p = new LocalPlayer();
+  expect(p.bow()).toBe(true);
+  expect(p.pose).toBe(Pose.Vai);
+  expect(p.bow()).toBe(false); // đang vái không chồng
+  p.update(VAI_SECONDS + 0.01, { x: 0, z: 0 }, 0);
+  expect(p.pose).toBe(Pose.Stand);
+  p.bow();
+  p.update(0.1, { x: 1, z: 0 }, 0);
+  expect(p.pose).toBe(Pose.Walk);
 });

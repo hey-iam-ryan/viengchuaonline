@@ -40,3 +40,8 @@ test('lời nguyện soạn sẵn có đủ vi & en', () => {
   expect(PRAYERS.length).toBeGreaterThanOrEqual(6);
   for (const p of PRAYERS) { expect(p.vi.length).toBeGreaterThan(5); expect(p.en.length).toBeGreaterThan(5); }
 });
+
+test('tư thế vái (đứng) hợp lệ', () => {
+  expect(parseClientMsg('{"t":"s","x":1,"z":2,"ry":0,"p":4}')).toEqual({ t: 's', x: 1, z: 2, ry: 0, p: 4 });
+  expect(parseClientMsg('{"t":"s","x":1,"z":2,"ry":0,"p":5}')).toBeNull();
+});

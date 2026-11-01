@@ -12,6 +12,8 @@ import { fullscreenSupport, isFullscreen, toggleFullscreen } from './fullscreen'
 import { MUSIC_TRACKS } from '../interact/soundtrack';
 import { PRAYERS, type Wish } from '@vco/shared/protocol';
 import type { CardKind } from './shareCard';
+import { Bow108, BOW_TARGET } from '../interact/bow108';
+import { Pose } from '@vco/shared/protocol';
 
 export function formatCountdown(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -102,9 +104,33 @@ export function createHud(d: HudDeps) {
       if (left > 0) { toast(t('wish.wait', { s: Math.ceil(left / 1000) })); return; }
       pickWish();
     }, 'primary-act'),
+    bow108: btn('act.bow108', '🙇', () => startBow108()),
     beads: btn('act.beads', '📿', () => d.actions.bead()),
   };
   const actionsBar = h('div', { class: 'actions' }, ...Object.values(B));
+
+  // --- 108 lạy liên tục ---
+  const session = new Bow108();
+  const b108Count = h('div', { class: 'b108-count', 'data-testid': 'bow108-count' });
+  const b108Bar = h('div', { class: 'b108-bar' }, h('i'));
+  const b108Stop = h('button', { type: 'button', class: 'b108-stop', on: { click: () => stopBow108() } });
+  const b108Title = h('div', { class: 'b108-title' });
+  const b108Hint = h('div', { class: 'b108-hint' });
+  const b108 = h('div', { class: 'b108', hidden: true }, b108Title, b108Count, b108Bar, b108Hint, b108Stop);
+  root.append(b108);
+  function renderBow108() {
+    b108.hidden = !session.active;
+    b108Count.textContent = `${session.count}/${BOW_TARGET}`;
+    (b108Bar.firstChild as HTMLElement).style.width = `${(session.count / BOW_TARGET) * 100}%`;
+  }
+  function startBow108() {
+    session.start(Date.now() + d.net.serverOffsetMs);
+    renderBow108();
+  }
+  function stopBow108() {
+    session.stop();
+    renderBow108();
+  }
   const hint = h('div', { class: 'hint' });
   const toasts = h('div', { class: 'toasts', 'aria-live': 'polite' });
   root.append(top, ceremony, stats, actionsBar, hint, toasts);
@@ -224,6 +250,9 @@ export function createHud(d: HudDeps) {
 
   function relabel() {
     for (const b of Object.values(B)) b.querySelector('.lb')!.textContent = t(b.dataset.key as Key);
+    b108Title.textContent = t('bow108.title');
+    b108Hint.textContent = t('bow108.hint');
+    b108Stop.textContent = t('bow108.stop');
     musicBtn.setAttribute('aria-label', t('music'));
     chantBtn.setAttribute('aria-label', t('chant.mo'));
     fsBtn.setAttribute('aria-label', t('fullscreen'));
@@ -287,7 +316,23 @@ export function createHud(d: HudDeps) {
       const a = d.actions.available();
       B.sit.hidden = !a.sit;
       B.stand.hidden = !(a.bow || d.player.pose === 3);
-      B.bow.hidden = !a.bow;
+      B.bow.hidden = !a.bow || session.active;
+      B.bow108.hidden = session.active;
+      const standing = d.player.pose === Pose.Stand || d.player.pose === Pose.Vai;
+      const bowLabel = t(standing ? 'act.vai' : 'act.bow');
+      const lb = B.bow.querySelector('.lb')!;
+      if (lb.textContent !== bowLabel) lb.textContent = bowLabel;
+      if (session.active) {
+        if (d.player.pose === Pose.Walk) stopBow108();
+        else if (session.tick(Date.now() + d.net.serverOffsetMs)) {
+          d.actions.bow();
+          renderBow108();
+          if (session.done) {
+            renderBow108();
+            toast(t('bow108.done'), { label: t('card.share'), fn: () => void shareAchievement('bows', BOW_TARGET) });
+          }
+        }
+      }
       B.bell.hidden = !a.bell;
       B.mo.hidden = !a.mo;
       B.incense.hidden = !a.incense;
