@@ -53,3 +53,42 @@ test('không có WebGL → thông báo thân thiện', async ({ page }) => {
   await page.goto('./');
   await expect(page.getByText('chưa hỗ trợ đồ hoạ 3D')).toBeVisible();
 });
+
+test('vào chùa thì nhạc thiền phát; bấm 🎵 thì dừng; bấm 🪵 thì gõ mõ', async ({ page }) => {
+  await page.addInitScript(() => {
+    const play = HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play = function () { (window as any).__media = this; return play.call(this); };
+  });
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Vào chùa' }).click();
+  await page.waitForFunction(() => { const m = (window as any).__media as HTMLMediaElement | undefined; return !!m && !m.paused && m.currentTime > 0.3; }, null, { timeout: 15_000 });
+  const music = page.getByRole('button', { name: 'Nhạc thiền' });
+  await expect(music).toHaveAttribute('aria-pressed', 'true');
+  await music.click();
+  await expect(music).toHaveAttribute('aria-pressed', 'false');
+  expect(await page.evaluate(() => (window as any).__media.paused)).toBe(true);
+  const chant = page.getByRole('button', { name: 'Gõ mõ tụng kinh' });
+  await chant.click();
+  await expect(chant).toHaveAttribute('aria-pressed', 'true');
+  await page.reload();
+  await page.getByRole('button', { name: 'Vào chùa' }).click();
+  await expect(page.getByRole('button', { name: 'Nhạc thiền' })).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByRole('button', { name: 'Gõ mõ tụng kinh' })).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('nút toàn màn hình đưa trang vào fullscreen', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Vào chùa' }).click();
+  await page.getByRole('button', { name: 'Toàn màn hình' }).click();
+  await page.waitForFunction(() => !!document.fullscreenElement);
+  await page.getByRole('button', { name: 'Toàn màn hình' }).click();
+  await page.waitForFunction(() => !document.fullscreenElement);
+});
+
+test('manifest PWA hợp lệ, có icon', async ({ page, request }) => {
+  await page.goto('./');
+  const href = await page.locator('link[rel=manifest]').getAttribute('href');
+  const m = await (await request.get(`./${href}`)).json();
+  expect(m.display).toBe('fullscreen');
+  for (const i of m.icons) expect((await request.get(`./${i.src}`)).status()).toBe(200);
+});

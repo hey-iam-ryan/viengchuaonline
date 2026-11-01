@@ -11,7 +11,8 @@ export interface Progress {
   name: string;
   robe: Robe;
   lang: Lang | null;
-  chant: boolean; // người dùng muốn nghe niệm Phật trong giờ lễ chung
+  music: boolean; // nhạc thiền nền
+  chant: boolean; // gõ mõ tụng kinh (ngoài giờ lễ)
 }
 
 const KEY = 'vco.progress.v1';
@@ -21,7 +22,7 @@ export const vnDay = (now: number) => new Date(now + 7 * 3_600_000).toISOString(
 
 const defaults = (now: number): Progress => ({
   bowsTotal: 0, bowsToday: 0, day: vnDay(now), beadIndex: 0, beadRounds: 0, incenseTotal: 0,
-  name: '', robe: 'lam', lang: null, chant: true,
+  name: '', robe: 'lam', lang: null, music: true, chant: false,
 });
 
 const nat = (v: unknown, max = Number.MAX_SAFE_INTEGER) => (Number.isInteger(v) && (v as number) >= 0 && (v as number) <= max ? (v as number) : 0);
@@ -45,7 +46,8 @@ export function loadProgress(storage: Storage | undefined = safeStorage(), now =
     name: typeof raw.name === 'string' ? raw.name.slice(0, 64) : '',
     robe: ROBES.includes(raw.robe) ? raw.robe : 'lam',
     lang: raw.lang === 'vi' || raw.lang === 'en' ? raw.lang : null,
-    chant: raw.chant !== false,
+    music: raw.music !== false,
+    chant: raw.chant === true,
   };
   if (p.day !== d.day) { p.day = d.day; p.bowsToday = 0; }
   return p;

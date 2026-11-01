@@ -52,3 +52,11 @@ test('storage ném lỗi không crash', () => {
   expect(loadProgress(throwingStorage(), 0).bowsTotal).toBe(0);
   expect(() => saveProgress(loadProgress(throwingStorage(), 0), throwingStorage())).not.toThrow();
 });
+
+test('mặc định: nhạc thiền bật, gõ mõ tụng kinh tắt; nhớ lựa chọn', () => {
+  const s = memStorage();
+  const p = loadProgress(s, 0);
+  expect([p.music, p.chant]).toEqual([true, false]);
+  saveProgress({ ...p, music: false, chant: true }, s);
+  expect(loadProgress(s, 0)).toMatchObject({ music: false, chant: true });
+});

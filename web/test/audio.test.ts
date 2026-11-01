@@ -9,7 +9,7 @@ test('trước unlock: không tạo AudioContext, mọi lệnh là no-op', async
   const a = new AudioManager();
   a.playBell(); a.playMo(); a.playBead(); a.playChime();
   await a.setChant(true);
-  a.seekChant(3);
+  await a.setMusic(true);
   expect(spy).not.toHaveBeenCalled();
 });
 test('không có Web Audio thì unlock cũng không ném lỗi', () => {

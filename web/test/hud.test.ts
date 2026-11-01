@@ -31,3 +31,12 @@ test('share: người dùng huỷ / không có gì → failed, không ném lỗi
   Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
   expect(await share('https://x', 'hi')).toBe('failed');
 });
+
+test('trạng thái gọn cho màn hình hẹp', async () => {
+  const { formatStatus } = await import('../src/ui/hud');
+  const { setLang } = await import('../src/ui/i18n');
+  setLang('vi');
+  expect(formatStatus('online', 0, 1234, true)).toBe('Gian 1 · 1.234 👤');
+  expect(formatStatus('online', 0, 1234, false)).toBe('Gian 1 · 1.234 người đang viếng chùa');
+  expect(formatStatus('solo', null, 0, true)).toBe('Viếng một mình');
+});

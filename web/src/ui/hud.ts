@@ -8,6 +8,8 @@ import { BEADS } from '../state/progress';
 import { h } from './dom';
 import { getLang, onLangChange, setLang, t, type Key, type Lang } from './i18n';
 import { share } from './share';
+import { fullscreenSupport, isFullscreen, toggleFullscreen } from './fullscreen';
+import { MUSIC_TRACKS } from '../interact/soundtrack';
 
 export function formatCountdown(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -23,6 +25,15 @@ export function formatVnTime(ms: number): string {
   return new Date(ms + 7 * 3_600_000).toISOString().slice(11, 16);
 }
 
+export function formatStatus(state: NetStatus, hall: number | null, total: number, compact: boolean): string {
+  if (state === 'online') {
+    const vars = { hall: (hall ?? 0) + 1, count: formatCount(Math.max(total, 1), getLang()) };
+    return t(compact ? 'hall.statusShort' : 'hall.status', vars);
+  }
+  if (state === 'solo') return t(compact ? 'hall.soloShort' : 'hall.solo');
+  return t('hall.connecting');
+}
+
 export interface HudDeps {
   root: HTMLElement;
   player: LocalPlayer;
@@ -33,7 +44,7 @@ export interface HudDeps {
   donateUrl: string;
   shareUrl: string;
   onLang: (l: Lang) => void;
-  onChantPref: (on: boolean) => void;
+  onAudioPref: (pref: { music?: boolean; chant?: boolean }) => void;
 }
 
 /** Thanh trạng thái, nút hành động theo ngữ cảnh, bộ đếm, giờ lễ, chia sẻ, cúng dường. */
@@ -45,15 +56,18 @@ export function createHud(d: HudDeps) {
   let userChant: boolean | null = null; // lựa chọn trong phiên; null = mặc định
 
   const statusText = h('span');
-  const changeBtn = h('button', { type: 'button', class: 'chip-btn', on: { click: () => d.net.changeHall() } });
-  const statusPill = h('div', { class: 'pill status', 'aria-live': 'polite' }, h('span', { class: 'dot' }), statusText, changeBtn);
+  const statusPill = h('div', { class: 'pill status', 'aria-live': 'polite' }, h('span', { class: 'dot' }), statusText);
   const ceremony = h('div', { class: 'pill ceremony' });
 
-  const chantBtn = h('button', { type: 'button', class: 'icon-btn', 'aria-pressed': 'false', on: { click: () => toggleChant() } }, '🎵');
+  const musicBtn = h('button', { type: 'button', class: 'icon-btn', 'aria-pressed': 'false', on: { click: () => toggleMusic() } }, '🎵');
+  const chantBtn = h('button', { type: 'button', class: 'icon-btn', 'aria-pressed': 'false', on: { click: () => toggleChant() } }, '🪵');
+  const fsSupport = fullscreenSupport();
+  const fsBtn = h('button', { type: 'button', class: 'icon-btn', on: { click: () => doFullscreen() } }, '⛶');
+  fsBtn.hidden = fsSupport === 'none' || fsSupport === 'standalone';
   const shareBtn = h('button', { type: 'button', class: 'icon-btn', on: { click: () => doShare() } }, '🔗');
   const menuBtn = h('button', { type: 'button', class: 'icon-btn', 'aria-expanded': 'false', on: { click: () => toggleMenu() } }, '⋯');
   const menu = h('div', { class: 'menu', hidden: true });
-  const top = h('div', { class: 'top' }, statusPill, h('div', { class: 'top-right' }, chantBtn, shareBtn, menuBtn), menu);
+  const top = h('div', { class: 'top' }, statusPill, h('div', { class: 'top-right' }, musicBtn, chantBtn, fsBtn, shareBtn, menuBtn), menu);
 
   const bowsEl = h('b', { 'data-testid': 'bow-count' });
   const beadsEl = h('b');
@@ -93,6 +107,22 @@ export function createHud(d: HudDeps) {
     if (r === 'copied') toast(t('share.copied'));
   }
 
+  async function doFullscreen() {
+    if (fsSupport === 'ios-pwa') { showDialog(t('fullscreen.ios.title'), t('fullscreen.ios.body')); return; }
+    await toggleFullscreen();
+    renderFs();
+  }
+  function renderFs() {
+    const on = isFullscreen();
+    fsBtn.setAttribute('aria-pressed', String(on));
+    fsBtn.textContent = on ? '🗗' : '⛶';
+  }
+  document.addEventListener('fullscreenchange', renderFs);
+  document.addEventListener('webkitfullscreenchange', renderFs);
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'KeyF' && !(e.target instanceof HTMLInputElement) && fsSupport === 'api') void doFullscreen();
+  });
+
   function toggleMenu(force?: boolean) {
     const open = force ?? menu.hidden;
     menu.hidden = !open;
@@ -101,47 +131,61 @@ export function createHud(d: HudDeps) {
 
   function buildMenu() {
     menu.replaceChildren(
+      ...(netStatus === 'online' ? [h('button', { type: 'button', on: { click: () => { d.net.changeHall(); toggleMenu(false); } } }, `🚪 ${t('hall.change')}`)] : []),
       h('button', { type: 'button', on: { click: () => { const l = getLang() === 'vi' ? 'en' : 'vi'; setLang(l); d.onLang(l); toggleMenu(false); } } }, `🌐 ${t('lang')}`),
       ...(d.donateUrl ? [h('a', { href: d.donateUrl, target: '_blank', rel: 'noopener noreferrer', class: 'donate' }, `🙏 ${t('donate')}`)] : []),
       h('button', { type: 'button', on: { click: () => { toggleMenu(false); showCredits(); } } }, `📜 ${t('credits')}`),
     );
   }
 
-  function showCredits() {
+  function showDialog(title: string, ...body: (string | HTMLElement)[]) {
     const box: HTMLDivElement = h('div', { class: 'onboard', role: 'dialog', 'aria-modal': 'true' },
-      h('div', { class: 'card' }, h('h2', {}, t('credits')), h('p', { class: 'sub' }, t('credits.body')),
+      h('div', { class: 'card' }, h('h2', {}, title), ...body.map((b) => (typeof b === 'string' ? h('p', { class: 'sub' }, b) : b)),
         h('button', { type: 'button', class: 'primary', on: { click: () => { box.remove(); } } }, t('close'))));
     root.appendChild(box);
   }
 
+  function showCredits() {
+    const list = h('ul', { class: 'credits' }, ...MUSIC_TRACKS.map((tr) => h('li', {}, tr.credit)));
+    showDialog(t('credits'), t('credits.body'), h('p', { class: 'sub' }, h('b', {}, `${t('credits.music')}:`)), list);
+  }
+
   function chantShouldPlay(now: number) {
-    const c = ceremonyStatus(now + d.net.serverOffsetMs);
     if (userChant !== null) return userChant;
-    return c.active && d.actions.progress.chant;
+    return d.actions.progress.chant || ceremonyStatus(now + d.net.serverOffsetMs).active;
   }
 
   function toggleChant() {
-    const now = Date.now();
-    userChant = !chantShouldPlay(now);
-    d.onChantPref(userChant);
-    syncChant(now, true);
+    userChant = !chantShouldPlay(Date.now());
+    d.onAudioPref({ chant: userChant });
+    syncAudio();
   }
 
-  function syncChant(now: number, force = false) {
-    const want = chantShouldPlay(now);
-    chantBtn.setAttribute('aria-pressed', String(want));
-    chantBtn.title = `${t('chant')}: ${want ? 'ON' : 'OFF'}`;
-    if (want === d.audio.chantPlaying && !force) return;
-    const c = ceremonyStatus(now + d.net.serverOffsetMs);
-    void d.audio.setChant(want).then(() => {
-      if (want && c.active) d.audio.seekChant((now + d.net.serverOffsetMs - c.startMs) / 1000);
-    });
+  function toggleMusic() {
+    d.onAudioPref({ music: !d.actions.progress.music });
+    syncAudio();
+  }
+
+  function syncAudio() {
+    const now = Date.now();
+    const chant = chantShouldPlay(now);
+    const music = d.actions.progress.music;
+    chantBtn.setAttribute('aria-pressed', String(chant));
+    musicBtn.setAttribute('aria-pressed', String(music));
+    chantBtn.title = `${t('chant.mo')}: ${t(chant ? 'on' : 'off')}`;
+    musicBtn.title = `${t('music')}: ${t(music ? 'on' : 'off')}`;
+    if (!d.audio.unlocked) return;
+    d.audio.setServerOffset(d.net.serverOffsetMs);
+    if (chant !== d.audio.chantOn) void d.audio.setChant(chant);
+    if (music !== d.audio.musicOn) void d.audio.setMusic(music);
   }
 
   function relabel() {
     for (const b of Object.values(B)) b.querySelector('.lb')!.textContent = t(b.dataset.key as Key);
-    changeBtn.textContent = t('hall.change');
-    chantBtn.setAttribute('aria-label', t('chant'));
+    musicBtn.setAttribute('aria-label', t('music'));
+    chantBtn.setAttribute('aria-label', t('chant.mo'));
+    fsBtn.setAttribute('aria-label', t('fullscreen'));
+    fsBtn.title = t('fullscreen');
     shareBtn.setAttribute('aria-label', t('share'));
     shareBtn.title = t('share');
     menuBtn.setAttribute('aria-label', t('menu'));
@@ -151,14 +195,15 @@ export function createHud(d: HudDeps) {
     buildMenu();
     renderStatus();
     renderProgress(d.actions.progress);
+    syncAudio();
   }
 
+  const narrow = matchMedia('(max-width: 480px)');
+  narrow.addEventListener?.('change', () => renderStatus());
   function renderStatus() {
     statusPill.dataset.state = netStatus;
-    changeBtn.hidden = netStatus !== 'online';
-    statusText.textContent =
-      netStatus === 'online' ? t('hall.status', { hall: (hall ?? 0) + 1, count: formatCount(Math.max(total, 1), getLang()) })
-      : netStatus === 'solo' ? t('hall.solo') : t('hall.connecting');
+    statusText.textContent = formatStatus(netStatus, hall, total, narrow.matches);
+    buildMenu();
   }
 
   function renderProgress(p: Progress) {
@@ -209,7 +254,7 @@ export function createHud(d: HudDeps) {
       const c = ceremonyStatus(now + d.net.serverOffsetMs);
       ceremony.dataset.active = String(c.active);
       ceremony.textContent = c.active ? t('ceremony.active') : t('ceremony.next', { time: formatVnTime(c.startMs), left: formatCountdown(c.startMs - now - d.net.serverOffsetMs) });
-      if (d.audio.unlocked) syncChant(now);
+      syncAudio();
     },
   };
 }

@@ -6,13 +6,13 @@ import { buildTemple } from './scene/temple';
 import { LocalPlayer } from './player/localPlayer';
 import { Controls } from './player/controls';
 import { createAvatar, type Avatar } from './player/avatar';
+import { clampCamera } from './player/camera';
 import { AudioManager } from './interact/audio';
 import { IncenseField } from './interact/incense';
 import { Actions } from './interact/actions';
 import { NetClient } from './net/client';
 import { RemotePlayers } from './net/remotePlayers';
 import { CF_BEACON, DONATE_URL, REALTIME_URL } from './config';
-import { saveProgress } from './state/progress';
 import { detectLang, setLang, t } from './ui/i18n';
 import { showOnboarding } from './ui/onboarding';
 import { createHud } from './ui/hud';
@@ -64,6 +64,7 @@ if (!stage) {
     const now = Date.now();
     remotes.apply(m, now);
     if (m.t === 'welcome') {
+      audio.setServerOffset(net.serverOffsetMs);
       incense.sync(m.incense.map((i) => ({ ...i, at: i.at - net.serverOffsetMs })), now);
       player.takeChanged();
       net.sendState(stateOf());
@@ -90,7 +91,7 @@ if (!stage) {
       statsUrl: REALTIME_URL, donateUrl: DONATE_URL,
       shareUrl: location.origin + location.pathname,
       onLang: (l) => actions.setProgress({ ...actions.progress, lang: l }),
-      onChantPref: (on) => saveProgress({ ...actions.progress, chant: on }),
+      onAudioPref: (pref) => actions.setProgress({ ...actions.progress, ...pref }),
     });
     hud.onProgress(actions.progress, null);
     net.start({ name: clean, robe });
@@ -124,7 +125,11 @@ if (!stage) {
     if (inHall) {
       camPos.x = Math.max(HALL.minX + 0.4, Math.min(HALL.maxX - 0.4, camPos.x));
       camPos.z = Math.max(HALL.minZ + 0.4, Math.min(HALL.maxZ - 0.4, camPos.z));
-      camPos.y = Math.min(camPos.y, 3.8);
+      camPos.y = Math.min(camPos.y, 4.6);
+    } else {
+      const c = clampCamera(player.x, player.z, camPos.x, camPos.z);
+      camPos.x = c.x;
+      camPos.z = c.z;
     }
     camera.position.lerp(camPos, Math.min(1, dt * 8));
     camTarget.set(player.x, 1.0, player.z);

@@ -12,7 +12,7 @@ export interface Temple {
   statue: THREE.Object3D;
 }
 
-const HALL_WALL_H = 4.2;
+const HALL_WALL_H = 5;
 
 function mesh(geo: THREE.BufferGeometry, mat: THREE.Material, shadow = true): THREE.Mesh {
   const m = new THREE.Mesh(geo, mat);
@@ -347,7 +347,7 @@ export function buildTemple(scene: THREE.Scene): Temple {
   // --- chánh điện ---
   const walls = OBSTACLES.slice(0, 5);
   for (const w of walls) root.add(boxMesh(w, 0, HALL_WALL_H, MAT.wall));
-  const lintel = boxMesh({ minX: -3, maxX: 3, minZ: -10.5, maxZ: -10 }, 3.3, HALL_WALL_H - 3.3, MAT.wall);
+  const lintel = boxMesh({ minX: -3, maxX: 3, minZ: -10.5, maxZ: -10 }, 3.8, HALL_WALL_H - 3.8, MAT.wall);
   root.add(lintel);
   const floor = mesh(new THREE.PlaneGeometry(HALL.maxX - HALL.minX, HALL.maxZ - HALL.minZ), MAT.floor, false);
   floor.rotation.x = -Math.PI / 2;
@@ -374,9 +374,9 @@ export function buildTemple(scene: THREE.Scene): Temple {
   upper.position.set(0, HALL_WALL_H + 2.6, -19);
   root.add(upper);
   const plaque = textPlaque('CHÁNH ĐIỆN', 3.6, 0.8);
-  plaque.position.set(0, 3.75, -9.85);
+  plaque.position.set(0, 4.4, -9.85);
   root.add(plaque);
-  for (const x of [-8.4, -5, 5, 8.4]) root.add(lantern(x, 3.3, -9.2));
+  for (const x of [-8.4, -5, 5, 8.4]) root.add(lantern(x, 3.9, -9.2));
 
   // bàn thờ + tượng
   const altar = boxMesh(ALTAR, 0, 1.0, MAT.lacquer);
@@ -405,10 +405,10 @@ export function buildTemple(scene: THREE.Scene): Temple {
     }
   }
   const glowLight = new THREE.PointLight(0xffc477, 18, 16, 1.6);
-  glowLight.position.set(0, 3.2, -21.5);
+  glowLight.position.set(0, 3.8, -21.5);
   root.add(glowLight);
   const fill = new THREE.PointLight(0xffe3b0, 10, 20, 1.6);
-  fill.position.set(0, 3.4, -14);
+  fill.position.set(0, 4.2, -14);
   root.add(fill);
 
   // lư hương trong điện

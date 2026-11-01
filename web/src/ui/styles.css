@@ -61,3 +61,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @keyframes pop { from { transform: scale(.85); opacity: 0 } }
 @media (max-width: 420px) { .act .lb { display: none; } .act { padding: 6px; } .hint { bottom: calc(env(safe-area-inset-bottom) + 44px); } }
 @media (min-width: 421px) and (pointer: coarse) { .act .lb { font-size: 14px; } }
+.credits { text-align: left; font-size: 12.5px; line-height: 1.45; padding-left: 18px; margin: 0 0 16px; opacity: .85; }
+.icon-btn[hidden] { display: none; }
+@media (max-width: 480px) {
+  .top-right { gap: 6px; }
+  .icon-btn { width: 40px; height: 40px; font-size: 17px; }
+  .status { max-width: calc(100vw - 20px - 5 * 40px - 4 * 6px - 8px); padding: 8px 11px; font-size: 13px; }
+  .ceremony { top: calc(env(safe-area-inset-top) + 58px); font-size: 12px; }
+}
