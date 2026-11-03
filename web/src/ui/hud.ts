@@ -147,6 +147,8 @@ export function createHud(d: HudDeps) {
     renderBow108();
   }
   const hint = h('div', { class: 'hint' });
+  const circPill = h('div', { class: 'pill circ', hidden: true, 'data-testid': 'circ-pill' });
+  root.append(circPill);
   const toasts = h('div', { class: 'toasts', 'aria-live': 'polite' });
   root.append(top, ceremony, stats, actionsBar, hint, toasts);
 
@@ -357,6 +359,10 @@ export function createHud(d: HudDeps) {
     onCheckIn(streak: number) {
       renderQuests();
       toast(t('q.checkin', { n: streak }));
+    },
+    setCirc(inRing: boolean, laps: number, total: number) {
+      circPill.hidden = !inRing;
+      if (inRing) circPill.textContent = t('circ.pill', { n: laps, t: total });
     },
     onRemoteWish(w: Wish) { toast(`🎋 ${w.n || t('me')}: ${prayerText(w.p)}`); },
     update(dt: number) {

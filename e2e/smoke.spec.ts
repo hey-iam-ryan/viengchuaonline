@@ -228,3 +228,19 @@ test('khuôn viên mới: cầu an trước tượng Quan Âm, phóng sinh bên 
   await page.getByRole('button', { name: 'Phóng sinh' }).click();
   await expect(page.locator('.float-text', { hasText: 'Phóng sinh, thiện duyên +1' })).toHaveCount(1);
 });
+
+test('đi nhiễu một vòng quanh bảo tháp thì được đếm vòng', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('vco.tutorial.v1', '1'));
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Vào chùa' }).click();
+  await page.evaluate(async () => {
+    const v = (window as any).__vco;
+    const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    for (let a = 0; a <= Math.PI * 2 + 0.6; a += 0.45) {
+      v.player.x = Math.cos(a) * 6; v.player.z = -45 + Math.sin(a) * 6;
+      await frame();
+    }
+  });
+  await expect(page.getByTestId('circ-pill')).toHaveText('🛕 Nhiễu tháp · vòng 1/3');
+  await expect(page.locator('.float-text', { hasText: 'Nhiễu tháp vòng 1' })).toHaveCount(1);
+});

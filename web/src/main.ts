@@ -25,6 +25,7 @@ import { checkIn, loadDaily, record, saveDaily } from './state/daily';
 import { RANKS, practicePoints, rankLabel, rankOf } from './state/rank';
 import { LeafField } from './interact/leafField';
 import { FishSchool } from './interact/fish';
+import { CIRCUM_LAPS, Circumambulation } from '@vco/shared/circum';
 import { lunarOf, occasionOf } from '@vco/shared/lunar';
 import { occasionLabel } from './ui/occasion';
 import { Actions } from './interact/actions';
@@ -69,6 +70,7 @@ if (!stage) {
   const lanterns = new LanternField(scene);
   const leafField = new LeafField(scene);
   const fish = new FishSchool(scene);
+  const circ = new Circumambulation();
   const wishTree = new WishTree(scene);
   const net = new NetClient({ url: REALTIME_URL });
   const remotes = new RemotePlayers(scene);
@@ -294,6 +296,13 @@ if (!stage) {
     me.root.rotation.y = player.ry;
     me.setPose(player.pose, performance.now() / 1000);
     if (player.changed) { net.sendState(stateOf()); player.takeChanged(); }
+    const cv = circ.update(player.x, player.z);
+    hud?.setCirc(cv.inRing, circ.laps, CIRCUM_LAPS);
+    if (cv.lap) {
+      headPos.set(player.x, 1.7, player.z).project(camera);
+      floats.spawnText(t('circ.lap', { n: cv.lap }), (headPos.x * 0.5 + 0.5) * innerWidth, (-headPos.y * 0.5 + 0.5) * innerHeight);
+      if (cv.done) { hud?.toast(t('circ.done', { t: CIRCUM_LAPS })); audio.playChime(); }
+    }
     hud?.update(dt);
 
     const inHall = player.x > HALL.minX && player.x < HALL.maxX && player.z > HALL.minZ && player.z < HALL.maxZ;

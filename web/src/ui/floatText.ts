@@ -43,11 +43,15 @@ export class FloatLayer {
   spawn(kind: FloatKind, x: number, y: number): void {
     const i = this.n[kind] ?? 0;
     this.n[kind] = i + 1;
+    this.spawnText(floatText(kind, i), x, y, kind);
+  }
+
+  spawnText(text: string, x: number, y: number, kind = 'custom'): void {
     const live = this.root.querySelectorAll('.float-text');
     if (live.length >= MAX) live[0].remove();
     const el = document.createElement('div');
     el.className = `float-text ft-${kind}`;
-    el.textContent = floatText(kind, i);
+    el.textContent = text;
     el.style.left = `${x + (Math.random() - 0.5) * 40}px`;
     el.style.top = `${y}px`;
     this.root.appendChild(el);

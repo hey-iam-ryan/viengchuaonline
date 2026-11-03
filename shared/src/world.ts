@@ -24,6 +24,11 @@ const LAKE_PARTS: Box[] = [
   box(ISLAND.maxX, LAKE.maxX, BRIDGE_HALF, ISLAND.maxZ), // giữa đảo và bờ, bắc cầu
 ];
 
+/** Bảo tháp phía sau chánh điện; lối đi nhiễu tháp là vành khăn quanh tháp. */
+export const TOWER = { x: 0, z: -45 };
+export const TOWER_HALF = 3.2;
+export const TOWER_RING = { inner: TOWER_HALF * Math.SQRT2 + 0.2, outer: 9 };
+
 /** Đường vào chùa phía Nam: đèn đá hai bên, cổng ngoài ở cuối đường. */
 export const STONE_LANTERNS: { x: number; z: number }[] = [22, 26, 30, 34].flatMap((z) => [{ x: -3.4, z }, { x: 3.4, z }]);
 export const OUTER_GATE_Z = 38.5;
@@ -69,6 +74,7 @@ export const OBSTACLES: Box[] = [
   ...GATE_PILLARS,
   box(WISH_TREE.x - 0.6, WISH_TREE.x + 0.6, WISH_TREE.z - 0.6, WISH_TREE.z + 0.6),
   ...LAKE_PARTS,
+  box(TOWER.x - TOWER_HALF, TOWER.x + TOWER_HALF, TOWER.z - TOWER_HALF, TOWER.z + TOWER_HALF),
   box(QUAN_AM.x - 1, QUAN_AM.x + 1, QUAN_AM.z - 1, QUAN_AM.z + 1),
   ...STONE_LANTERNS.map((l) => box(l.x - 0.3, l.x + 0.3, l.z - 0.3, l.z + 0.3)),
   box(-7, -5, OUTER_GATE_Z - 0.5, OUTER_GATE_Z + 0.5),
