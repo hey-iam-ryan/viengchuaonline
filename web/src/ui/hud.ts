@@ -16,6 +16,7 @@ import { Bow108, BOW_TARGET } from '../interact/bow108';
 import { Pose } from '@vco/shared/protocol';
 import { lunarOf } from '@vco/shared/lunar';
 import { lunarShort, occasionLabel } from './occasion';
+import { QUESTS, questsDone, type DailyState, type QuestId } from '../state/daily';
 
 export function formatCountdown(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -56,6 +57,7 @@ export interface HudDeps {
   shareCard: (kind: CardKind, n: number) => Promise<'shared' | 'downloaded' | 'failed'>;
   /** Người gần nhất trong tầm chào. */
   nearby: () => { id: string; n: string } | null;
+  daily: () => DailyState;
   greet: (id: string) => void;
 }
 
@@ -83,7 +85,8 @@ export function createHud(d: HudDeps) {
 
   const bowsEl = h('b', { 'data-testid': 'bow-count' });
   const beadsEl = h('b');
-  const stats = h('div', { class: 'stats' }, h('span', { class: 'k-bows' }), ' ', bowsEl, h('span', { class: 'sep' }, ' · '), h('span', { class: 'k-beads' }), ' ', beadsEl);
+  const questChip = h('button', { type: 'button', class: 'quest-chip', 'data-testid': 'quest-chip', on: { click: () => showQuests() } });
+  const stats = h('div', { class: 'stats' }, questChip, h('span', { class: 'sep' }, ' · '), h('span', { class: 'k-bows' }), ' ', bowsEl, h('span', { class: 'sep' }, ' · '), h('span', { class: 'k-beads' }), ' ', beadsEl);
 
   const btn = (key: Key, icon: string, fn: () => void, cls = '') => {
     const b = h('button', { type: 'button', class: `act ${cls}`, on: { click: (e) => { e.stopPropagation(); fn(); } } }, h('span', { class: 'ic', 'aria-hidden': 'true' }, icon), h('span', { class: 'lb' }));
@@ -221,6 +224,22 @@ export function createHud(d: HudDeps) {
     root.appendChild(box);
   }
 
+  const questName = (id: QuestId) => {
+    const q = QUESTS.find((x) => x.id === id)!;
+    return t(`q.${id}`, { n: q.target });
+  };
+  function showQuests() {
+    const st = d.daily();
+    const list = h('ul', { class: 'quests' }, ...QUESTS.map((q) => {
+      const v = Math.min(q.target, st.prog[q.id] ?? 0);
+      return h('li', { class: v >= q.target ? 'done' : '' }, h('span', {}, `${q.icon} ${questName(q.id)}`), h('b', {}, v >= q.target ? '✓' : `${v}/${q.target}`));
+    }));
+    showDialog(`📜 ${t('q.title')}`, h('p', { class: 'sub' }, t('q.streak', { n: Math.max(1, st.streak) })), list);
+  }
+  function renderQuests() {
+    questChip.textContent = `📜 ${questsDone(d.daily())}/${QUESTS.length}`;
+  }
+
   function showCredits() {
     const list = h('ul', { class: 'credits' }, ...MUSIC_TRACKS.map((tr) => h('li', {}, tr.credit)));
     showDialog(t('credits'), t('credits.body'), h('p', { class: 'sub' }, h('b', {}, `${t('credits.music')}:`)), list);
@@ -321,6 +340,16 @@ export function createHud(d: HudDeps) {
     onRoundDone(rounds: number) { toast(t('round.done'), { label: t('card.share'), fn: () => void shareAchievement('beads', rounds) }); },
     onGreeted(fromId: string, name: string) {
       toast(t('greet.got', { name }), { label: t('greet.back'), fn: () => d.greet(fromId) });
+    },
+    renderQuests,
+    onQuest(completed: QuestId[], allDone: boolean) {
+      renderQuests();
+      for (const id of completed) toast(t('q.done1', { q: questName(id) }));
+      if (allDone) toast(t('q.all'));
+    },
+    onCheckIn(streak: number) {
+      renderQuests();
+      toast(t('q.checkin', { n: streak }));
     },
     onRemoteWish(w: Wish) { toast(`🎋 ${w.n || t('me')}: ${prayerText(w.p)}`); },
     update(dt: number) {

@@ -21,6 +21,7 @@ import { nearestPlayer } from './net/nearby';
 import { FloatLayer } from './ui/floatText';
 import { buildFestive } from './scene/festive';
 import { showTutorial } from './ui/tutorial';
+import { checkIn, loadDaily, record, saveDaily } from './state/daily';
 import { lunarOf, occasionOf } from '@vco/shared/lunar';
 import { occasionLabel } from './ui/occasion';
 import { Actions } from './interact/actions';
@@ -69,6 +70,7 @@ if (!stage) {
   const stateOf = () => ({ x: player.x, z: player.z, ry: player.ry, p: player.pose });
 
   let hud: ReturnType<typeof createHud> | null = null;
+  let daily = loadDaily();
   const floats = new FloatLayer(ui);
   const headPos = new THREE.Vector3();
   const floatAtMe = (kind: Parameters<FloatLayer['spawn']>[0]) => {
@@ -83,7 +85,14 @@ if (!stage) {
     now: () => Date.now(),
     onProgress: (p, ms) => hud?.onProgress(p, ms),
     onRoundDone: (r) => hud?.onRoundDone(r),
-    onPerform: (k) => floatAtMe(k),
+    onPerform: (k) => {
+      floatAtMe(k);
+      const r = record(daily, k, Date.now());
+      daily = r.state;
+      saveDaily(daily);
+      if (hud && (r.completed.length || r.allDone)) hud.onQuest(r.completed, r.allDone);
+      else hud?.renderQuests();
+    },
   });
   setLang(detectLang(navigator.languages ?? [navigator.language], actions.progress.lang));
 
@@ -152,6 +161,7 @@ if (!stage) {
       statsUrl: REALTIME_URL, donateUrl: DONATE_URL,
       shareUrl: shareBase,
       wishes: () => wishTree.list,
+      daily: () => daily,
       nearby: () => nearestPlayer(remotes.positions(), player.x, player.z),
       greet: (id) => { if (actions.greet(id)) me?.say(t('greet.say'), performance.now() / 1000); },
       invite: () => inviteUrl(shareBase, net.status === 'online' ? net.hall : null),
@@ -164,6 +174,11 @@ if (!stage) {
       onAudioPref: (pref) => actions.setProgress({ ...actions.progress, ...pref }),
     });
     hud.onProgress(actions.progress, null);
+    const ci = checkIn(daily, Date.now());
+    daily = ci.state;
+    saveDaily(daily);
+    if (ci.firstToday) hud.onCheckIn(daily.streak);
+    else hud.renderQuests();
     net.start({ name: clean, robe }, prefer);
     showTutorial(ui);
   });

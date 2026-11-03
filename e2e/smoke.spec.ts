@@ -170,3 +170,18 @@ test('bấm xuống nền thì nhân vật tự đi tới đó', async ({ page }
   await page.mouse.click(box.width / 2, box.height * 0.42); // phía trước mặt, trên nền sân
   await expect.poll(() => page.evaluate(() => (window as any).__vco.player.z), { timeout: 15_000 }).toBeLessThan(z0 - 1);
 });
+
+test('điểm danh & nhiệm vụ: vái 3 lần thì xong nhiệm vụ đầu, xem được bảng nhiệm vụ', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Vào chùa' }).click();
+  await expect(page.getByText(/Điểm danh hôm nay/)).toBeVisible();
+  await page.getByRole('button', { name: 'Bỏ qua' }).click();
+  await expect(page.getByTestId('quest-chip')).toHaveText('📜 0/5');
+  for (let i = 0; i < 3; i++) {
+    await page.getByRole('button', { name: 'Vái', exact: true }).click();
+    await page.waitForTimeout(1400); // vái xong mới vái tiếp
+  }
+  await expect(page.getByTestId('quest-chip')).toHaveText('📜 1/5');
+  await page.getByTestId('quest-chip').click();
+  await expect(page.getByRole('dialog').getByText('Vái hoặc lạy 3 lần')).toBeVisible();
+});
