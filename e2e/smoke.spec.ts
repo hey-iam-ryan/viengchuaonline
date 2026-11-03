@@ -6,7 +6,7 @@ async function recordFloats(page: Page) {
     const seen: string[] = ((window as any).__floats = []);
     new MutationObserver((ms) => {
       for (const m of ms) for (const n of m.addedNodes) if (n instanceof HTMLElement && n.classList.contains('float-text')) seen.push(n.textContent ?? '');
-    }).observe(document.documentElement, { childList: true, subtree: true });
+    }).observe(document, { childList: true, subtree: true }); // documentElement chưa có lúc init script chạy
   });
 }
 const floatsSeen = (page: Page) => page.evaluate(() => (window as any).__floats as string[]);
@@ -257,5 +257,5 @@ test('đi nhiễu một vòng quanh bảo tháp thì được đếm vòng', asy
     }
   });
   await expect(page.getByTestId('circ-pill')).toHaveText('🛕 Nhiễu tháp · vòng 1/3');
-  await expect.poll(() => floatsSeen(page)).toContain('Nhiễu tháp vòng 1');
+  await expect.poll(() => floatsSeen(page)).toContain('Nhiễu tháp vòng 1 🙏');
 });
