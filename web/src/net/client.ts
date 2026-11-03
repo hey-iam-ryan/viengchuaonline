@@ -32,7 +32,7 @@ export class NetClient {
   private readonly WS: typeof WebSocket | undefined;
   private readonly now: () => number;
   private readonly random: () => number;
-  private hello: { name: string; robe: Robe } | null = null;
+  private hello: { name: string; robe: Robe; k: number } | null = null;
   private ws: WebSocket | null = null;
   private wsHall = -1;
   private exclude: number[] = [];
@@ -73,8 +73,8 @@ export class NetClient {
   }
 
   /** prefer: gian bạn bè rủ vào (0-based), chỉ dùng cho lần kết nối đầu. */
-  start(hello: { name: string; robe: Robe }, prefer = -1): void {
-    this.hello = hello;
+  start(hello: { name: string; robe: Robe; k?: number }, prefer = -1): void {
+    this.hello = { k: 0, ...hello };
     this.prefer = prefer;
     if (!this.url || !this.WS) { this.setStatus('solo', null); return; }
     this.setStatus('connecting', null);
@@ -201,6 +201,12 @@ export class NetClient {
     this.lastSent = this.now();
     const r = (v: number) => Math.round(v * 100) / 100;
     this.send({ t: 's', x: r(s.x), z: r(s.z), ry: r(s.ry), p: s.p });
+  }
+
+  /** Lên cấp: cập nhật cho lần kết nối sau và báo ngay cho gian hiện tại. */
+  setRank(k: number): void {
+    if (this.hello) this.hello.k = k;
+    this.send({ t: 'rk', k });
   }
 
   changeHall(): void {

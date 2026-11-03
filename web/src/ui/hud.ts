@@ -58,6 +58,7 @@ export interface HudDeps {
   /** Người gần nhất trong tầm chào. */
   nearby: () => { id: string; n: string } | null;
   daily: () => DailyState;
+  rank: () => { label: string; points: number; nextLabel: string | null; toNext: number };
   greet: (id: string) => void;
 }
 
@@ -234,7 +235,10 @@ export function createHud(d: HudDeps) {
       const v = Math.min(q.target, st.prog[q.id] ?? 0);
       return h('li', { class: v >= q.target ? 'done' : '' }, h('span', {}, `${q.icon} ${questName(q.id)}`), h('b', {}, v >= q.target ? '✓' : `${v}/${q.target}`));
     }));
-    showDialog(`📜 ${t('q.title')}`, h('p', { class: 'sub' }, t('q.streak', { n: Math.max(1, st.streak) })), list);
+    const rk = d.rank();
+    showDialog(`📜 ${t('q.title')}`,
+      h('p', { class: 'rank-line' }, t('rank.line', { r: rk.label, p: rk.points }), rk.nextLabel ? h('small', {}, t('rank.next', { n: rk.toNext, r: rk.nextLabel })) : null),
+      h('p', { class: 'sub' }, t('q.streak', { n: Math.max(1, st.streak) })), list);
   }
   function renderQuests() {
     questChip.textContent = `📜 ${questsDone(d.daily())}/${QUESTS.length}`;

@@ -49,7 +49,7 @@ export async function connect(hall: number, origin = ORIGIN): Promise<TestClient
 
 export async function join(hall: number, name = 'An') {
   const c = await connect(hall);
-  c.send({ t: 'hello', name, robe: 'lam' });
+  c.send({ t: 'hello', name, robe: 'lam', k: 0 });
   const w = await c.next('welcome');
   return { c, w };
 }

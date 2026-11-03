@@ -88,7 +88,7 @@ export class Hall extends DurableObject<Env> {
     }
     if (msg.t === 'hello') {
       if (att.state) return;
-      att.state = { id: att.id, n: sanitizeName(msg.name), r: msg.robe, x: SPAWN.x, z: SPAWN.z, ry: SPAWN.ry, p: 0 };
+      att.state = { id: att.id, n: sanitizeName(msg.name), r: msg.robe, x: SPAWN.x, z: SPAWN.z, ry: SPAWN.ry, p: 0, k: msg.k };
       ws.serializeAttachment(att);
       const players = this.players().filter((p) => p.id !== att.id);
       this.send(ws, {
@@ -123,6 +123,11 @@ export class Hall extends DurableObject<Env> {
         this.broadcast({ t: 'den', l }, ws);
         break;
       }
+      case 'rk':
+        att.state = { ...att.state, k: msg.k };
+        ws.serializeAttachment(att);
+        this.markDirty(att.id);
+        break;
       case 'hi': {
         if (now - (att.lastHi ?? 0) < GREET_COOLDOWN_MS) return;
         att.lastHi = now;

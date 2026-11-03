@@ -22,6 +22,7 @@ import { FloatLayer } from './ui/floatText';
 import { buildFestive } from './scene/festive';
 import { showTutorial } from './ui/tutorial';
 import { checkIn, loadDaily, record, saveDaily } from './state/daily';
+import { RANKS, practicePoints, rankLabel, rankOf } from './state/rank';
 import { lunarOf, occasionOf } from '@vco/shared/lunar';
 import { occasionLabel } from './ui/occasion';
 import { Actions } from './interact/actions';
@@ -71,6 +72,25 @@ if (!stage) {
 
   let hud: ReturnType<typeof createHud> | null = null;
   let daily = loadDaily();
+  const points = () => practicePoints({ ...actions.progress, days: daily.days ?? 0 });
+  let myRank = 0;
+  let myRobe: Parameters<typeof createAvatar>[0] = 'lam';
+  let myName = '';
+  const refreshRank = () => {
+    const k = rankOf(points());
+    if (k === myRank) return;
+    const up = k > myRank;
+    myRank = k;
+    if (me) {
+      // dựng lại nhãn tên kèm bậc mới
+      scene.remove(me.root);
+      me.dispose();
+      me = createAvatar(myRobe, myName || t('me'), rankLabel(k));
+      scene.add(me.root);
+    }
+    net.setRank(k);
+    if (up) hud?.toast(t('rank.up', { r: rankLabel(k) }));
+  };
   const floats = new FloatLayer(ui);
   const headPos = new THREE.Vector3();
   const floatAtMe = (kind: Parameters<FloatLayer['spawn']>[0]) => {
@@ -92,6 +112,7 @@ if (!stage) {
       saveDaily(daily);
       if (hud && (r.completed.length || r.allDone)) hud.onQuest(r.completed, r.allDone);
       else hud?.renderQuests();
+      refreshRank();
     },
   });
   setLang(detectLang(navigator.languages ?? [navigator.language], actions.progress.lang));
@@ -142,8 +163,8 @@ if (!stage) {
     entered = true;
     const clean = name ? sanitizeName(name) : '';
     actions.setProgress({ ...actions.progress, name: clean, robe });
-    me = createAvatar(robe, clean || t('me'));
-    scene.add(me.root);
+    myRobe = robe;
+    myName = clean;
     controls = new Controls(canvas);
     controls.onTap = (cx, cy) => {
       // bấm xuống nền → tìm điểm trên mặt đất (y = 0) và đi tới đó
@@ -162,6 +183,12 @@ if (!stage) {
       shareUrl: shareBase,
       wishes: () => wishTree.list,
       daily: () => daily,
+      rank: () => {
+        const p = points();
+        const k = rankOf(p);
+        const nx = RANKS[k + 1];
+        return { label: rankLabel(k), points: p, nextLabel: nx ? rankLabel(k + 1) : null, toNext: nx ? nx.min - p : 0 };
+      },
       nearby: () => nearestPlayer(remotes.positions(), player.x, player.z),
       greet: (id) => { if (actions.greet(id)) me?.say(t('greet.say'), performance.now() / 1000); },
       invite: () => inviteUrl(shareBase, net.status === 'online' ? net.hall : null),
@@ -177,9 +204,12 @@ if (!stage) {
     const ci = checkIn(daily, Date.now());
     daily = ci.state;
     saveDaily(daily);
+    myRank = rankOf(points());
+    me = createAvatar(robe, clean || t('me'), rankLabel(myRank));
+    scene.add(me.root);
     if (ci.firstToday) hud.onCheckIn(daily.streak);
     else hud.renderQuests();
-    net.start({ name: clean, robe }, prefer);
+    net.start({ name: clean, robe, k: myRank }, prefer);
     showTutorial(ui);
   });
 

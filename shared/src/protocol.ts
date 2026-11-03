@@ -11,6 +11,8 @@ export const LANTERN_COOLDOWN_MS = 15_000;
 export const WISH_MAX_PER_HALL = 30;
 export const WISH_COOLDOWN_MS = 30_000;
 export const GREET_COOLDOWN_MS = 3_000;
+/** Số bậc tu tập (0..RANK_COUNT-1). */
+export const RANK_COUNT = 6;
 
 /** Lời nguyện soạn sẵn — không cho gõ tự do để khỏi phải kiểm duyệt. */
 export const PRAYERS: readonly { vi: string; en: string }[] = [
@@ -37,19 +39,20 @@ export const BURNERS: readonly BurnerId[] = ['hall', 'yard'];
 export const Pose = { Stand: 0, Walk: 1, Sit: 2, Bow: 3, Vai: 4 } as const;
 export type Pose = (typeof Pose)[keyof typeof Pose];
 
-export interface PlayerState { id: string; n: string; r: Robe; x: number; z: number; ry: number; p: Pose }
+export interface PlayerState { id: string; n: string; r: Robe; x: number; z: number; ry: number; p: Pose; k?: number }
 export interface Incense { b: BurnerId; at: number }
 export interface Lantern { x: number; z: number; at: number; s: number }
 export interface Wish { n: string; p: number; at: number }
 
 export type ClientMsg =
-  | { t: 'hello'; name: string; robe: Robe }
+  | { t: 'hello'; name: string; robe: Robe; k: number }
   | { t: 's'; x: number; z: number; ry: number; p: Pose }
   | { t: 'a'; a: Action }
   | { t: 'inc'; b: BurnerId }
   | { t: 'den'; x: number; z: number }
   | { t: 'ng'; p: number }
-  | { t: 'hi'; to: string };
+  | { t: 'hi'; to: string }
+  | { t: 'rk'; k: number };
 
 export type ServerMsg =
   | { t: 'welcome'; id: string; hall: number; now: number; players: PlayerState[]; incense: Incense[]; lanterns: Lantern[]; wishes: Wish[] }
@@ -64,6 +67,7 @@ export type ServerMsg =
 const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const oneOf = <T>(list: readonly T[], v: unknown): v is T => list.includes(v as T);
 const decoder = new TextDecoder();
+const isRank = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 0 && (v as number) < RANK_COUNT;
 
 export function parseClientMsg(raw: string | ArrayBuffer): ClientMsg | null {
   const size = typeof raw === 'string' ? raw.length : raw.byteLength;
@@ -77,7 +81,9 @@ export function parseClientMsg(raw: string | ArrayBuffer): ClientMsg | null {
   if (!m || typeof m !== 'object') return null;
   switch (m.t) {
     case 'hello':
-      return typeof m.name === 'string' && oneOf(ROBES, m.robe) ? { t: 'hello', name: m.name, robe: m.robe } : null;
+      return typeof m.name === 'string' && oneOf(ROBES, m.robe) ? { t: 'hello', name: m.name, robe: m.robe, k: isRank(m.k) ? m.k : 0 } : null;
+    case 'rk':
+      return isRank(m.k) ? { t: 'rk', k: m.k } : null;
     case 's':
       return num(m.x) && num(m.z) && num(m.ry) && oneOf([0, 1, 2, 3, 4], m.p)
         ? { t: 's', x: m.x, z: m.z, ry: m.ry, p: m.p }

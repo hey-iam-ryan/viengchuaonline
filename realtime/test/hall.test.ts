@@ -179,3 +179,15 @@ test('chắp tay chào: gửi cho cả gian (trừ người chào), có cooldown
   expect(b.c.msgs.filter((m) => m.t === 'hi')).toHaveLength(0);
   expect(a.c.msgs.filter((m) => m.t === 'hi')).toHaveLength(0);
 });
+
+test('cấp bậc: có trong welcome của người khác, cập nhật khi lên cấp', async () => {
+  const a = await connect(60);
+  a.send({ t: 'hello', name: 'Minh', robe: 'lam', k: 2 });
+  const aw = await a.next('welcome');
+  const b = await join(60);
+  expect(b.w.players.find((p) => p.id === aw.id)?.k).toBe(2);
+  a.send({ t: 'rk', k: 3 });
+  let k = 2;
+  for (let i = 0; i < 5 && k !== 3; i++) k = (await b.c.next('snap')).u.find((p) => p.id === aw.id)?.k ?? k;
+  expect(k).toBe(3);
+});

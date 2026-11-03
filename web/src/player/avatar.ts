@@ -25,26 +25,31 @@ const G = {
 };
 const EYE = new THREE.MeshBasicMaterial({ color: 0x1b1310 });
 
-function nameSprite(name: string): THREE.Sprite {
+function nameSprite(name: string, sub = ''): THREE.Sprite {
   const c = document.createElement('canvas');
   c.width = 256;
-  c.height = 64;
+  c.height = 96;
   const g = c.getContext('2d')!;
   g.font = '600 30px system-ui, sans-serif';
-  const w = Math.min(248, g.measureText(name).width + 28);
+  const w = Math.min(248, Math.max(g.measureText(name).width, sub ? 120 : 0) + 28);
   g.fillStyle = 'rgba(40,20,10,0.55)';
   g.beginPath();
-  g.roundRect((256 - w) / 2, 10, w, 44, 22);
+  g.roundRect((256 - w) / 2, 6, w, sub ? 80 : 44, 22);
   g.fill();
   g.fillStyle = '#fff6e3';
   g.textAlign = 'center';
   g.textBaseline = 'middle';
-  g.fillText(name, 128, 33, 236);
+  g.fillText(name, 128, 29, 236);
+  if (sub) {
+    g.font = '600 22px system-ui, sans-serif';
+    g.fillStyle = '#f2c95a';
+    g.fillText(sub, 128, 63, 236);
+  }
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false, transparent: true }));
-  s.scale.set(1.2, 0.3, 1);
-  s.position.y = 1.55;
+  s.scale.set(1.2, 0.45, 1);
+  s.position.y = 1.62;
   s.renderOrder = 10;
   return s;
 }
@@ -93,7 +98,7 @@ export interface Avatar {
 }
 
 /** Nhân vật chibi Phật tử: đầu to, áo theo màu, tóc búi. t = thời gian (giây). */
-export function createAvatar(robe: Robe, name: string): Avatar {
+export function createAvatar(robe: Robe, name: string, rankLabel = ''): Avatar {
   const root = new THREE.Group();
   const mat = robeMat(robe);
   const mk = (g: THREE.BufferGeometry, m: THREE.Material) => {
@@ -134,7 +139,7 @@ export function createAvatar(robe: Robe, name: string): Avatar {
   });
   upper.add(torso, hands, head, hair, bun, ...eyes);
 
-  const label = nameSprite(name);
+  const label = nameSprite(name, rankLabel);
   root.add(label);
   const bubble = bubbleSprite();
   root.add(bubble.sprite);
@@ -162,7 +167,7 @@ export function createAvatar(robe: Robe, name: string): Avatar {
       skirt.visible = !sitting;
       lap.visible = sitting;
       upper.position.y = sitting ? 0.22 : 0.5;
-      label.position.y = sitting ? 1.27 : 1.55;
+      label.position.y = sitting ? 1.34 : 1.62;
       upper.rotation.x = 0;
       root.position.y = 0;
       if (p === Pose.Walk) {

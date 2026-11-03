@@ -5,7 +5,7 @@ test('parse hợp lệ', () => {
   expect(parseClientMsg('{"t":"s","x":1,"z":2,"ry":0.5,"p":1}')).toEqual({ t: 's', x: 1, z: 2, ry: 0.5, p: 1 });
   expect(parseClientMsg('{"t":"inc","b":"yard"}')).toEqual({ t: 'inc', b: 'yard' });
   expect(parseClientMsg('{"t":"a","a":"bow"}')).toEqual({ t: 'a', a: 'bow' });
-  expect(parseClientMsg('{"t":"hello","name":"An","robe":"lam"}')).toEqual({ t: 'hello', name: 'An', robe: 'lam' });
+  expect(parseClientMsg('{"t":"hello","name":"An","robe":"lam"}')).toEqual({ t: 'hello', name: 'An', robe: 'lam', k: 0 });
 });
 
 test('parse ArrayBuffer', () => {
@@ -51,4 +51,12 @@ test('chắp tay chào', () => {
   expect(parseClientMsg('{"t":"hi","to":""}')).toBeNull();
   expect(parseClientMsg(`{"t":"hi","to":"${'x'.repeat(40)}"}`)).toBeNull();
   expect(parseClientMsg('{"t":"hi","to":5}')).toBeNull();
+});
+
+test('cấp bậc trong hello và tin cập nhật cấp', () => {
+  expect(parseClientMsg('{"t":"hello","name":"A","robe":"lam","k":3}')).toEqual({ t: 'hello', name: 'A', robe: 'lam', k: 3 });
+  expect(parseClientMsg('{"t":"hello","name":"A","robe":"lam"}')).toEqual({ t: 'hello', name: 'A', robe: 'lam', k: 0 });
+  expect(parseClientMsg('{"t":"hello","name":"A","robe":"lam","k":99}')).toEqual({ t: 'hello', name: 'A', robe: 'lam', k: 0 });
+  expect(parseClientMsg('{"t":"rk","k":2}')).toEqual({ t: 'rk', k: 2 });
+  expect(parseClientMsg('{"t":"rk","k":9}')).toBeNull();
 });

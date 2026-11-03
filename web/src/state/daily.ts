@@ -13,7 +13,7 @@ export const QUESTS: Quest[] = [
   { id: 'bellMo', target: 1, kinds: ['bell', 'mo'], icon: '🔔' },
 ];
 
-export interface DailyState { day: string; lastVisit: string; streak: number; prog: Partial<Record<QuestId, number>> }
+export interface DailyState { day: string; lastVisit: string; streak: number; days?: number; prog: Partial<Record<QuestId, number>> }
 
 const KEY = 'vco.daily.v1';
 export const emptyDaily = (): DailyState => ({ day: '', lastVisit: '', streak: 0, prog: {} });
@@ -25,7 +25,7 @@ export function checkIn(s: DailyState, now: number): { state: DailyState; firstT
   const today = vnDay(now);
   if (s.lastVisit === today) return { state: s, firstToday: false };
   const streak = s.lastVisit === prevDay(today) ? s.streak + 1 : 1;
-  return { state: { day: today, lastVisit: today, streak, prog: {} }, firstToday: true };
+  return { state: { day: today, lastVisit: today, streak, days: (s.days ?? 0) + 1, prog: {} }, firstToday: true };
 }
 
 export function questsDone(s: DailyState): number {
@@ -52,7 +52,7 @@ export function loadDaily(storage: Storage | undefined = safe()): DailyState {
   try {
     const r = JSON.parse(storage?.getItem(KEY) ?? 'null');
     if (!r || typeof r !== 'object' || typeof r.day !== 'string' || typeof r.streak !== 'number') return emptyDaily();
-    return { day: r.day, lastVisit: String(r.lastVisit ?? ''), streak: Math.max(0, Math.floor(r.streak)), prog: r.prog && typeof r.prog === 'object' ? r.prog : {} };
+    return { day: r.day, lastVisit: String(r.lastVisit ?? ''), streak: Math.max(0, Math.floor(r.streak)), days: Number.isInteger(r.days) ? r.days : 0, prog: r.prog && typeof r.prog === 'object' ? r.prog : {} };
   } catch {
     return emptyDaily();
   }

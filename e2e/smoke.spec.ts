@@ -185,3 +185,16 @@ test('điểm danh & nhiệm vụ: vái 3 lần thì xong nhiệm vụ đầu, x
   await page.getByTestId('quest-chip').click();
   await expect(page.getByRole('dialog').getByText('Vái hoặc lạy 3 lần')).toBeVisible();
 });
+
+test('cấp bậc: đủ điểm thì lên bậc, xem được trong bảng tu tập', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (!localStorage.getItem('vco.progress.v1')) localStorage.setItem('vco.progress.v1', JSON.stringify({ bowsTotal: 24, lang: 'vi' }));
+    localStorage.setItem('vco.tutorial.v1', '1');
+  });
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Vào chùa' }).click(); // điểm danh: +5 → 29 điểm (Mầm sen)
+  await page.getByRole('button', { name: 'Vái', exact: true }).click(); // +1 → 30 → Búp sen
+  await expect(page.getByText('Lên bậc tu tập: 🌷 Búp sen')).toBeVisible();
+  await page.getByTestId('quest-chip').click();
+  await expect(page.getByText(/Bậc tu tập: 🌷 Búp sen · 30 điểm/)).toBeVisible();
+});

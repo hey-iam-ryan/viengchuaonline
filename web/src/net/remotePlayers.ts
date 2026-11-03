@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { PlayerState, ServerMsg } from '@vco/shared/protocol';
 import { createAvatar, type Avatar } from '../player/avatar';
 import { Interp } from './interpolation';
+import { rankLabel } from '../state/rank';
 
 const LABEL_CROWD = 60;
 const LABEL_NEAR = 9;
@@ -12,6 +13,7 @@ interface Remote { state: PlayerState; avatar: Avatar; interp: Interp }
 export class RemotePlayers {
   private map = new Map<string, Remote>();
   private selfId: string | null = null;
+  private pendingInterp = new Map<string, Interp>();
 
   constructor(private readonly scene: THREE.Scene) {}
 
@@ -41,11 +43,17 @@ export class RemotePlayers {
   private upsert(p: PlayerState, now: number) {
     if (p.id === this.selfId) return;
     let r = this.map.get(p.id);
-    if (r && (r.state.n !== p.n || r.state.r !== p.r)) { this.remove(p.id); r = undefined; }
+    if (r && (r.state.n !== p.n || r.state.r !== p.r || (r.state.k ?? 0) !== (p.k ?? 0))) {
+      const keep = r.interp;
+      this.remove(p.id);
+      r = undefined;
+      this.pendingInterp.set(p.id, keep);
+    }
     if (!r) {
-      const avatar = createAvatar(p.r, p.n);
+      const avatar = createAvatar(p.r, p.n, rankLabel(p.k ?? 0));
       this.scene.add(avatar.root);
-      r = { state: p, avatar, interp: new Interp() };
+      r = { state: p, avatar, interp: this.pendingInterp.get(p.id) ?? new Interp() };
+      this.pendingInterp.delete(p.id);
       this.map.set(p.id, r);
     }
     r.state = p;

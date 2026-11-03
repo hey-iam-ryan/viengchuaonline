@@ -60,7 +60,7 @@ test('lobby → hall → welcome → online, offset đồng hồ', async () => {
   expect(urls[0]).toBe('https://rt.example/lobby');
   expect(last().url).toBe('wss://rt.example/hall/3');
   last().open();
-  expect(last().sent[0]).toEqual({ t: 'hello', name: 'An', robe: 'lam' });
+  expect(last().sent[0]).toEqual({ t: 'hello', name: 'An', robe: 'lam', k: 0 });
   last().recv(welcome(3, Date.now() + 5000));
   expect(status.at(-1)).toEqual(['online', 3]);
   expect(c.serverOffsetMs).toBe(5000);
