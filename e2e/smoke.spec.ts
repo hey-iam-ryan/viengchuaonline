@@ -1,4 +1,15 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+/** Chữ bay chỉ sống ~1,6s; trên CI chậm, thao tác bấm có thể mất vài giây → ghi lại mọi chữ bay đã xuất hiện. */
+async function recordFloats(page: Page) {
+  await page.addInitScript(() => {
+    const seen: string[] = ((window as any).__floats = []);
+    new MutationObserver((ms) => {
+      for (const m of ms) for (const n of m.addedNodes) if (n instanceof HTMLElement && n.classList.contains('float-text')) seen.push(n.textContent ?? '');
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  });
+}
+const floatsSeen = (page: Page) => page.evaluate(() => (window as any).__floats as string[]);
 
 test('vào chùa & lạy ở chế độ một mình', async ({ page }) => {
   await page.goto('./');
@@ -121,12 +132,13 @@ test('buổi tối (20:00 giờ VN) trời tối, đèn sáng', async ({ page })
 // Không dùng page.clock.install ở đây: đồng hồ giả thay requestAnimationFrame, trên máy CI không GPU
 // mỗi khung 3D tốn hàng trăm ms nên đồng hồ giả gọi dồn khung để "đuổi kịp" → trang treo. Dùng thời gian thật.
 test('đứng ở sân cũng vái được; 108 lạy liên tục đếm theo nhịp và dừng được', async ({ page }) => {
+  await recordFloats(page);
   await page.goto('./');
   await page.getByRole('button', { name: 'Vào chùa' }).click();
   await expect(page.getByRole('button', { name: 'Đứng dậy' })).toBeHidden(); // đang đứng thì không có nút đứng dậy
   await page.getByRole('button', { name: 'Vái', exact: true }).click();
   await expect(page.getByTestId('bow-count')).toHaveText('1');
-  await expect(page.locator('.float-text', { hasText: 'An lạc +1' })).toHaveCount(1); // chữ bay lên khi vái
+  await expect.poll(() => floatsSeen(page)).toContain('An lạc +1');
   await page.getByRole('button', { name: '108 lạy' }).click();
   await expect(page.getByTestId('bow108-count')).toHaveText(/^\d+\/108$/);
   // nhịp lạy chung mỗi 3,5s → trong ~4s phải có ít nhất 1 lạy
@@ -207,29 +219,32 @@ test('cấp bậc: đủ điểm thì lên bậc, xem được trong bảng tu t
 });
 
 test('quét lá sân chùa (chế độ một mình): đứng cạnh lá thì quét được', async ({ page }) => {
+  await recordFloats(page);
   await page.addInitScript(() => localStorage.setItem('vco.tutorial.v1', '1'));
   await page.goto('./');
   await page.getByRole('button', { name: 'Vào chùa' }).click();
   await page.waitForFunction(() => (window as any).__vco.leafField.nearest(0, 0, 999));
   await page.evaluate(() => { const v = (window as any).__vco; const l = v.leafField.nearest(0, 5, 999); v.player.x = l.x; v.player.z = l.z + 0.4; });
   await page.getByRole('button', { name: 'Quét lá' }).click();
-  await expect(page.locator('.float-text', { hasText: 'Sân sạch, tâm an +1' })).toHaveCount(1);
+  await expect.poll(() => floatsSeen(page)).toContain('Sân sạch, tâm an +1');
 });
 
 test('khuôn viên mới: cầu an trước tượng Quan Âm, phóng sinh bên hồ lớn', async ({ page }) => {
+  await recordFloats(page);
   await page.addInitScript(() => localStorage.setItem('vco.tutorial.v1', '1'));
   await page.goto('./');
   await page.getByRole('button', { name: 'Vào chùa' }).click();
   const go = (id: string) => page.evaluate((id) => { const v = (window as any).__vco; const z = v.zones.find((z: any) => z.id === id); v.player.x = z.x; v.player.z = z.z; }, id);
   await go('quanam');
   await page.getByRole('button', { name: 'Cầu an' }).click();
-  await expect(page.locator('.float-text', { hasText: 'Nam mô Quán Thế Âm Bồ Tát' })).toHaveCount(1);
+  await expect.poll(() => floatsSeen(page)).toContain('Nam mô Quán Thế Âm Bồ Tát');
   await go('phongsinh');
   await page.getByRole('button', { name: 'Phóng sinh' }).click();
-  await expect(page.locator('.float-text', { hasText: 'Phóng sinh, thiện duyên +1' })).toHaveCount(1);
+  await expect.poll(() => floatsSeen(page)).toContain('Phóng sinh, thiện duyên +1');
 });
 
 test('đi nhiễu một vòng quanh bảo tháp thì được đếm vòng', async ({ page }) => {
+  await recordFloats(page);
   await page.addInitScript(() => localStorage.setItem('vco.tutorial.v1', '1'));
   await page.goto('./');
   await page.getByRole('button', { name: 'Vào chùa' }).click();
@@ -242,5 +257,5 @@ test('đi nhiễu một vòng quanh bảo tháp thì được đếm vòng', asy
     }
   });
   await expect(page.getByTestId('circ-pill')).toHaveText('🛕 Nhiễu tháp · vòng 1/3');
-  await expect(page.locator('.float-text', { hasText: 'Nhiễu tháp vòng 1' })).toHaveCount(1);
+  await expect.poll(() => floatsSeen(page)).toContain('Nhiễu tháp vòng 1');
 });
