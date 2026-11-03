@@ -165,6 +165,13 @@ test('bấm xuống nền thì nhân vật tự đi tới đó', async ({ page }
   await page.goto('./');
   await page.getByRole('button', { name: 'Vào chùa' }).click();
   await page.getByRole('button', { name: 'Bỏ qua' }).click();
+  // chờ camera lượn xong từ góc màn chào xuống sau lưng nhân vật
+  await expect.poll(async () => {
+    const a = await page.evaluate(() => (window as any).__vco.camera.position.z);
+    await page.waitForTimeout(150);
+    const b = await page.evaluate(() => (window as any).__vco.camera.position.z);
+    return Math.abs(a - b);
+  }, { timeout: 15_000 }).toBeLessThan(0.01);
   const z0 = await page.evaluate(() => (window as any).__vco.player.z);
   const box = (await page.locator('#scene').boundingBox())!;
   await page.mouse.click(box.width / 2, box.height * 0.42); // phía trước mặt, trên nền sân
@@ -207,4 +214,17 @@ test('quét lá sân chùa (chế độ một mình): đứng cạnh lá thì qu
   await page.evaluate(() => { const v = (window as any).__vco; const l = v.leafField.nearest(0, 5, 999); v.player.x = l.x; v.player.z = l.z + 0.4; });
   await page.getByRole('button', { name: 'Quét lá' }).click();
   await expect(page.locator('.float-text', { hasText: 'Sân sạch, tâm an +1' })).toHaveCount(1);
+});
+
+test('khuôn viên mới: cầu an trước tượng Quan Âm, phóng sinh bên hồ lớn', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('vco.tutorial.v1', '1'));
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Vào chùa' }).click();
+  const go = (id: string) => page.evaluate((id) => { const v = (window as any).__vco; const z = v.zones.find((z: any) => z.id === id); v.player.x = z.x; v.player.z = z.z; }, id);
+  await go('quanam');
+  await page.getByRole('button', { name: 'Cầu an' }).click();
+  await expect(page.locator('.float-text', { hasText: 'Nam mô Quán Thế Âm Bồ Tát' })).toHaveCount(1);
+  await go('phongsinh');
+  await page.getByRole('button', { name: 'Phóng sinh' }).click();
+  await expect(page.locator('.float-text', { hasText: 'Phóng sinh, thiện duyên +1' })).toHaveCount(1);
 });

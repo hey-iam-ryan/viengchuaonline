@@ -19,6 +19,7 @@ export interface ActionDeps {
   lanterns?: Pick<LanternField, 'add'>;
   wishes?: Pick<WishTree, 'add'>;
   leaves?: Pick<LeafField, 'nearest' | 'remove'>;
+  fish?: { release(x: number, z: number, now: number): void };
   myName?: () => string;
   send: (m: ClientMsg) => void;
   now: () => number;
@@ -29,7 +30,7 @@ export interface ActionDeps {
   onPerform?: (kind: FloatKind) => void;
 }
 
-export interface Available { sit: boolean; bow: boolean; bell: boolean; mo: boolean; incense: BurnerId | null; lantern: boolean; wish: boolean; sweep: boolean }
+export interface Available { sit: boolean; bow: boolean; bell: boolean; mo: boolean; incense: BurnerId | null; lantern: boolean; wish: boolean; sweep: boolean; cauan: boolean; phongsinh: boolean }
 
 export class Actions {
   progress: Progress;
@@ -39,6 +40,8 @@ export class Actions {
   private lastWish = -Infinity;
   private lastGreet = -Infinity;
   private lastSweep = -Infinity;
+  private lastCauAn = -Infinity;
+  private lastFish = -Infinity;
 
   constructor(private readonly d: ActionDeps) {
     this.progress = loadProgress(d.storage, d.now());
@@ -63,6 +66,8 @@ export class Actions {
       lantern: zone?.kind === 'pond',
       wish: zone?.kind === 'wish',
       sweep: !!this.d.leaves?.nearest(p.x, p.z, SWEEP_RANGE),
+      cauan: zone?.kind === 'quanam',
+      phongsinh: zone?.kind === 'phongsinh',
     };
   }
 
@@ -149,6 +154,29 @@ export class Actions {
     this.lastGreet = now;
     this.d.player.bow();
     this.d.send({ t: 'hi', to });
+    return true;
+  }
+
+  /** Cầu an trước tượng Quan Âm: vái + chuông gia trì. */
+  cauAn(): boolean {
+    const now = this.d.now();
+    if (!this.available().cauan || now - this.lastCauAn < 5_000) return false;
+    this.lastCauAn = now;
+    this.d.player.bow();
+    this.d.audio.playChime();
+    this.d.send({ t: 'a', a: 'cauan' });
+    this.d.onPerform?.('cauan');
+    return true;
+  }
+
+  /** Phóng sinh: thả cá chép xuống hồ lớn. */
+  phongSinh(): boolean {
+    const now = this.d.now();
+    if (!this.available().phongsinh || now - this.lastFish < 15_000) return false;
+    this.lastFish = now;
+    this.d.fish?.release(this.d.player.x, this.d.player.z, now);
+    this.d.send({ t: 'a', a: 'ca' });
+    this.d.onPerform?.('fish');
     return true;
   }
 

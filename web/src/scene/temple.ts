@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import type { BurnerId } from '@vco/shared/protocol';
 import {
-  ALTAR, BELL_TOWER, BOUNDS, GATE_PILLARS, HALL, HALL_BURNER, MO_STAND, OBSTACLES, POND, TREES, WISH_TREE, YARD_BURNER, ZONES, type Box,
+  ALTAR, BELL_TOWER, BOUNDS, CORE, GATE_PILLARS, HALL, HALL_BURNER, MO_STAND, OBSTACLES, POND, TREES, WISH_TREE, YARD_BURNER, ZONES, type Box,
 } from '@vco/shared/world';
 import { MAT, tileTexture } from './materials';
 import { glowSprite } from './glow';
+import { buildLakeArea } from './lakeArea';
 
 const GLOWS: THREE.Sprite[] = [];
 
@@ -254,17 +255,17 @@ export function buildTemple(scene: THREE.Scene): Temple {
   scene.add(root);
 
   // --- mặt đất ---
-  const grass = mesh(new THREE.PlaneGeometry(160, 160), MAT.grass, false);
+  const grass = mesh(new THREE.PlaneGeometry(260, 260), MAT.grass, false);
   grass.rotation.x = -Math.PI / 2;
   grass.position.y = -0.02;
   root.add(grass);
   const tiles = tileTexture();
-  const bw = BOUNDS.maxX - BOUNDS.minX + 4;
-  const bd = BOUNDS.maxZ - BOUNDS.minZ + 4;
+  const bw = CORE.maxX - CORE.minX + 4;
+  const bd = CORE.maxZ - CORE.minZ + 4;
   tiles.repeat.set(bw / 2, bd / 2);
   const yard = mesh(new THREE.PlaneGeometry(bw, bd), new THREE.MeshStandardMaterial({ map: tiles, roughness: 1 }), false);
   yard.rotation.x = -Math.PI / 2;
-  yard.position.set((BOUNDS.minX + BOUNDS.maxX) / 2, 0, (BOUNDS.minZ + BOUNDS.maxZ) / 2);
+  yard.position.set((CORE.minX + CORE.maxX) / 2, 0, (CORE.minZ + CORE.maxZ) / 2);
   root.add(yard);
   const path = mesh(new THREE.PlaneGeometry(3.2, 28), MAT.stone, false);
   path.rotation.x = -Math.PI / 2;
@@ -276,10 +277,13 @@ export function buildTemple(scene: THREE.Scene): Temple {
     { minX: BOUNDS.minX - 1, maxX: BOUNDS.minX - 0.5, minZ: BOUNDS.minZ - 1, maxZ: BOUNDS.maxZ + 1 },
     { minX: BOUNDS.maxX + 0.5, maxX: BOUNDS.maxX + 1, minZ: BOUNDS.minZ - 1, maxZ: BOUNDS.maxZ + 1 },
     { minX: BOUNDS.minX - 1, maxX: BOUNDS.maxX + 1, minZ: BOUNDS.minZ - 1, maxZ: BOUNDS.minZ - 0.5 },
-    { minX: BOUNDS.minX - 1, maxX: -8, minZ: BOUNDS.maxZ + 0.5, maxZ: BOUNDS.maxZ + 1 },
-    { minX: 8, maxX: BOUNDS.maxX + 1, minZ: BOUNDS.maxZ + 0.5, maxZ: BOUNDS.maxZ + 1 },
+    { minX: BOUNDS.minX - 1, maxX: -6.7, minZ: BOUNDS.maxZ + 0.5, maxZ: BOUNDS.maxZ + 1 },
+    { minX: 6.7, maxX: BOUNDS.maxX + 1, minZ: BOUNDS.maxZ + 0.5, maxZ: BOUNDS.maxZ + 1 },
   ];
   for (const f of fence) root.add(boxMesh(f, 0, 1.3, MAT.wall));
+
+  // --- hồ lớn, tượng Quan Âm, đường vào chùa, cổng ngoài ---
+  GLOWS.push(...buildLakeArea(root));
 
   // --- cổng tam quan ---
   for (const p of GATE_PILLARS) {

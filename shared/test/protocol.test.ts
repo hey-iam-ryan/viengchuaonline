@@ -66,3 +66,8 @@ test('quét lá', () => {
   expect(parseClientMsg('{"t":"quet","id":-1}')).toBeNull();
   expect(parseClientMsg('{"t":"quet","id":"a"}')).toBeNull();
 });
+
+test('hành động mới: cầu an, phóng sinh', () => {
+  expect(parseClientMsg('{"t":"a","a":"cauan"}')).toEqual({ t: 'a', a: 'cauan' });
+  expect(parseClientMsg('{"t":"a","a":"ca"}')).toEqual({ t: 'a', a: 'ca' });
+});

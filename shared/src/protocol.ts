@@ -30,8 +30,8 @@ export const PRAYERS: readonly { vi: string; en: string }[] = [
 
 export type Robe = 'lam' | 'nau' | 'trang' | 'vang';
 export const ROBES: readonly Robe[] = ['lam', 'nau', 'trang', 'vang'];
-export type Action = 'bow' | 'mo' | 'chuong' | 'beads';
-export const ACTIONS: readonly Action[] = ['bow', 'mo', 'chuong', 'beads'];
+export type Action = 'bow' | 'mo' | 'chuong' | 'beads' | 'cauan' | 'ca';
+export const ACTIONS: readonly Action[] = ['bow', 'mo', 'chuong', 'beads', 'cauan', 'ca'];
 export type BurnerId = 'hall' | 'yard';
 export const BURNERS: readonly BurnerId[] = ['hall', 'yard'];
 

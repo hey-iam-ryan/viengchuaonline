@@ -115,6 +115,8 @@ export function createHud(d: HudDeps) {
     }, 'primary-act'),
     greet: btn('act.greet', '🙏', () => { if (greetTarget) d.greet(greetTarget.id); }, 'primary-act'),
     sweep: btn('act.sweep', '🧹', () => d.actions.sweep(), 'primary-act'),
+    cauan: btn('act.cauan', '🪷', () => d.actions.cauAn(), 'primary-act'),
+    fish: btn('act.fish', '🐟', () => d.actions.phongSinh(), 'primary-act'),
     bow108: btn('act.bow108', '🙇', () => startBow108()),
     beads: btn('act.beads', '📿', () => d.actions.bead()),
   };
@@ -391,6 +393,8 @@ export function createHud(d: HudDeps) {
       B.lantern.hidden = !a.lantern;
       B.wish.hidden = !a.wish;
       B.sweep.hidden = !a.sweep;
+      B.cauan.hidden = !a.cauan;
+      B.fish.hidden = !a.phongsinh;
       acc += dt;
       if (acc < 1) return;
       acc = 0;

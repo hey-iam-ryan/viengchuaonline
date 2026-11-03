@@ -75,6 +75,7 @@ test('đứng bấm lạy → vái, xong về đứng; đi thì huỷ', () => {
 
 test('bấm để đi: tự đi tới đích rồi đứng lại', () => {
   const p = new LocalPlayer();
+  p.x = 0; p.z = 15;
   p.moveTo(3, 12);
   for (let i = 0; i < 60 && p.hasTarget; i++) p.update(0.05, { x: 0, z: 0 }, 0);
   expect(Math.hypot(p.x - 3, p.z - 12)).toBeLessThan(0.3);

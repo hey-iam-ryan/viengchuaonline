@@ -37,9 +37,9 @@ export function createRenderer(canvas: HTMLCanvasElement): Stage | null {
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xf3d9b1);
-  scene.fog = new THREE.Fog(0xf3d9b1, 35, 85);
+  scene.fog = new THREE.Fog(0xf3d9b1, 45, 140);
 
-  const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 200);
+  const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 300);
 
   const hemi = new THREE.HemisphereLight(0xfff1d6, 0x6b5a3a, 1.1);
   scene.add(hemi);
@@ -51,6 +51,7 @@ export function createRenderer(canvas: HTMLCanvasElement): Stage | null {
   sc.left = -32; sc.right = 32; sc.top = 32; sc.bottom = -32; sc.near = 1; sc.far = 90;
   sun.shadow.bias = -0.0005;
   scene.add(sun);
+  scene.add(sun.target); // bóng đổ đi theo người chơi (main cập nhật vị trí)
 
   const applyLevel = (lvl: QualityLevel) => {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, PIXEL_RATIO[lvl]));

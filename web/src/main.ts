@@ -24,6 +24,7 @@ import { showTutorial } from './ui/tutorial';
 import { checkIn, loadDaily, record, saveDaily } from './state/daily';
 import { RANKS, practicePoints, rankLabel, rankOf } from './state/rank';
 import { LeafField } from './interact/leafField';
+import { FishSchool } from './interact/fish';
 import { lunarOf, occasionOf } from '@vco/shared/lunar';
 import { occasionLabel } from './ui/occasion';
 import { Actions } from './interact/actions';
@@ -67,6 +68,7 @@ if (!stage) {
   const festive = buildFestive(scene);
   const lanterns = new LanternField(scene);
   const leafField = new LeafField(scene);
+  const fish = new FishSchool(scene);
   const wishTree = new WishTree(scene);
   const net = new NetClient({ url: REALTIME_URL });
   const remotes = new RemotePlayers(scene);
@@ -101,7 +103,7 @@ if (!stage) {
     floats.spawn(kind, (headPos.x * 0.5 + 0.5) * innerWidth, (-headPos.y * 0.5 + 0.5) * innerHeight);
   };
   const actions = new Actions({
-    player, audio, incense, lanterns, wishes: wishTree, leaves: leafField,
+    player, audio, incense, lanterns, wishes: wishTree, leaves: leafField, fish,
     myName: () => actions.progress.name,
     send: (m) => net.send(m),
     now: () => Date.now(),
@@ -130,7 +132,11 @@ if (!stage) {
       leafField.sync(m.leaves ?? []);
       player.takeChanged();
       net.sendState(stateOf());
-    } else if (m.t === 'act') actions.onRemoteAction(m.id, m.a);
+    } else if (m.t === 'act') {
+      actions.onRemoteAction(m.id, m.a);
+      if (m.a === 'ca') { const p = remotes.positions().find((r) => r.id === m.id); if (p) fish.release(p.x, p.z); }
+      if (m.a === 'cauan') remotes.say(m.id, t('cauan.say'), performance.now() / 1000);
+    }
     else if (m.t === 'inc') incense.add({ b: m.i.b, at: m.i.at - net.serverOffsetMs });
     else if (m.t === 'den') lanterns.add({ ...m.l, at: m.l.at - net.serverOffsetMs });
     else if (m.t === 'ng') { wishTree.add(m.w); hud?.onRemoteWish(m.w); }
@@ -265,6 +271,7 @@ if (!stage) {
     incense.update(dt, now);
     lanterns.update(now);
     leafField.update(dt, now);
+    fish.update(dt);
     wishTree.update(now);
     remotes.update(now, camera.position);
     if (!entered || !controls || !me) {
@@ -304,6 +311,10 @@ if (!stage) {
       camPos.y = capCameraHeight(c.x, c.z, camPos.y);
     }
     camera.position.lerp(camPos, Math.min(1, dt * 8));
+    // bản đồ rộng: vùng đổ bóng đi theo người chơi
+    stage.sun.position.x = player.x + 18;
+    stage.sun.position.z = player.z + 14;
+    stage.sun.target.position.set(player.x, 0, player.z);
     camTarget.set(player.x, 1.0, player.z);
     camera.lookAt(camTarget);
   });
@@ -313,7 +324,7 @@ if (!stage) {
       player, get controls() { return controls; }, nearestZone, actions, audio, net, remotes,
       zones: ZONES,
       sceneBg: () => (scene.background as THREE.Color).getHex(),
-      lanterns, wishTree, leafField,
+      lanterns, wishTree, leafField, fish, camera,
       teleportToCushion(i: number) {
         const z = ZONES.filter((z) => z.kind === 'cushion')[i];
         player.x = z.x; player.z = z.z; actions.sit();

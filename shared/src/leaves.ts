@@ -1,4 +1,4 @@
-import { BOUNDS, OBSTACLES, PLAYER_RADIUS, POND, type Box } from './world';
+import { CORE as BOUNDS, OBSTACLES, PLAYER_RADIUS, POND, type Box } from './world';
 
 /** Lá rụng trên sân: cứ LEAF_EVERY_MS thêm một lá, tối đa LEAF_MAX lá mỗi gian. */
 export const LEAF_EVERY_MS = 20_000;

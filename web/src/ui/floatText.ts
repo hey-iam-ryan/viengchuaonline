@@ -1,6 +1,6 @@
 import { getLang } from './i18n';
 
-export type FloatKind = 'bow' | 'mo' | 'bell' | 'bead' | 'incense' | 'lantern' | 'sweep';
+export type FloatKind = 'bow' | 'mo' | 'bell' | 'bead' | 'incense' | 'lantern' | 'sweep' | 'cauan' | 'fish';
 
 /** Chữ bay lên khi tu tập — phản hồi vui mắt, không tích điểm, không gắn với tiền. */
 const TEXT: Record<'vi' | 'en', Record<FloatKind, string[]>> = {
@@ -12,6 +12,8 @@ const TEXT: Record<'vi' | 'en', Record<FloatKind, string[]>> = {
     incense: ['Tâm hương 🙏'],
     lantern: ['Bình an +1'],
     sweep: ['Sân sạch, tâm an +1'],
+    cauan: ['Nam mô Quán Thế Âm Bồ Tát'],
+    fish: ['Phóng sinh, thiện duyên +1'],
   },
   en: {
     bow: ['Peace +1', 'Worries −1'],
@@ -21,6 +23,8 @@ const TEXT: Record<'vi' | 'en', Record<FloatKind, string[]>> = {
     incense: ['Incense offered 🙏'],
     lantern: ['Blessings +1'],
     sweep: ['Clean yard, calm mind +1'],
+    cauan: ['Namo Avalokiteshvara'],
+    fish: ['Life released, kindness +1'],
   },
 };
 

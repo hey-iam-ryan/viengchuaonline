@@ -147,3 +147,23 @@ test('quét lá: chỉ khi có lá gần, gửi tin, cộng điểm, báo chữ 
   expect(a.available().sweep).toBe(false);
   expect(a.sweep()).toBe(false);
 });
+
+test('cầu an trước tượng Quan Âm: vái + gửi tin, có cooldown', () => {
+  const s = setup('quanam');
+  expect(s.a.available().cauan).toBe(true);
+  expect(s.a.cauAn()).toBe(true);
+  expect(s.player.pose).toBe(Pose.Vai);
+  expect(s.sent).toEqual([{ t: 'a', a: 'cauan' }]);
+  expect(s.a.cauAn()).toBe(false);
+  expect(setup().a.available().cauan).toBe(false);
+});
+test('phóng sinh bên hồ: gửi tin, có cooldown, xa hồ thì không', () => {
+  const s = setup('phongsinh');
+  expect(s.a.available().phongsinh).toBe(true);
+  expect(s.a.phongSinh()).toBe(true);
+  expect(s.sent).toEqual([{ t: 'a', a: 'ca' }]);
+  expect(s.a.phongSinh()).toBe(false);
+  s.setNow(20_000);
+  expect(s.a.phongSinh()).toBe(true);
+  expect(setup().a.phongSinh()).toBe(false);
+});
