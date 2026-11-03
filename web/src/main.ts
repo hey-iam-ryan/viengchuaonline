@@ -1,6 +1,6 @@
 import './ui/styles.css';
 import * as THREE from 'three';
-import { HALL, ZONES, nearestZone } from '@vco/shared/world';
+import { BOUNDS, HALL, ZONES, nearestZone } from '@vco/shared/world';
 import { createRenderer } from './scene/renderer';
 import { buildTemple } from './scene/temple';
 import { LocalPlayer } from './player/localPlayer';
@@ -20,6 +20,7 @@ import { getLang } from './ui/i18n';
 import { nearestPlayer } from './net/nearby';
 import { FloatLayer } from './ui/floatText';
 import { buildFestive } from './scene/festive';
+import { showTutorial } from './ui/tutorial';
 import { lunarOf, occasionOf } from '@vco/shared/lunar';
 import { occasionLabel } from './ui/occasion';
 import { Actions } from './interact/actions';
@@ -135,6 +136,17 @@ if (!stage) {
     me = createAvatar(robe, clean || t('me'));
     scene.add(me.root);
     controls = new Controls(canvas);
+    controls.onTap = (cx, cy) => {
+      // bấm xuống nền → tìm điểm trên mặt đất (y = 0) và đi tới đó
+      ndc.set((cx / innerWidth) * 2 - 1, -(cy / innerHeight) * 2 + 1);
+      raycaster.setFromCamera(ndc, camera);
+      if (!raycaster.ray.intersectPlane(groundPlane, hit)) return;
+      if (hit.x < BOUNDS.minX || hit.x > BOUNDS.maxX || hit.z < BOUNDS.minZ || hit.z > BOUNDS.maxZ) return;
+      player.moveTo(hit.x, hit.z);
+      ring.position.set(hit.x, 0.03, hit.z);
+      ring.visible = true;
+      ringT = 0;
+    };
     hud = createHud({
       root: ui, player, actions, audio, net,
       statsUrl: REALTIME_URL, donateUrl: DONATE_URL,
@@ -153,7 +165,19 @@ if (!stage) {
     });
     hud.onProgress(actions.progress, null);
     net.start({ name: clean, robe }, prefer);
+    showTutorial(ui);
   });
+
+  // bấm để đi: tia chiếu xuống mặt đất + vòng đánh dấu điểm đến
+  const raycaster = new THREE.Raycaster();
+  const ndc = new THREE.Vector2();
+  const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const hit = new THREE.Vector3();
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.28, 0.4, 32), new THREE.MeshBasicMaterial({ color: 0xf2c95a, transparent: true, opacity: 0.9, depthWrite: false }));
+  ring.rotation.x = -Math.PI / 2;
+  ring.visible = false;
+  scene.add(ring);
+  let ringT = 0;
 
   const camTarget = new THREE.Vector3();
   const camPos = new THREE.Vector3();
@@ -195,7 +219,15 @@ if (!stage) {
       camera.lookAt(0, 2.5, -12);
       return;
     }
-    player.update(dt, controls.move, controls.camYaw);
+    player.update(dt, controls.move, controls.camYaw, controls.run);
+    if (ring.visible) {
+      ringT += dt;
+      const k = player.hasTarget ? 1 + Math.sin(ringT * 6) * 0.1 : Math.max(0, 1 - ringT * 2);
+      ring.scale.setScalar(k);
+      (ring.material as THREE.MeshBasicMaterial).opacity = player.hasTarget ? 0.9 : Math.max(0, 0.9 - ringT * 2);
+      if (!player.hasTarget && ringT > 0.5) ring.visible = false;
+      if (!player.hasTarget && ringT > 0.5) ringT = 0;
+    }
     me.root.position.set(player.x, 0, player.z);
     me.root.rotation.y = player.ry;
     me.setPose(player.pose, performance.now() / 1000);

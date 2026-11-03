@@ -105,3 +105,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .ceremony[data-active="true"] .cer-day { color: #f2c95a; }
 .occasion { margin: -6px 0 10px; font-size: 14px; color: var(--red); font-weight: 700; min-height: 0; }
 .occasion:empty { display: none; }
+.tut { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 96px); transform: translateX(-50%); width: min(420px, calc(100vw - 24px)); background: rgba(255,246,227,.97); border: 2px solid var(--gold); border-radius: 18px; padding: 14px 16px 12px; box-shadow: 0 12px 40px rgba(0,0,0,.3); z-index: 15; animation: pop .3s ease; }
+.tut h3 { margin: 0 0 6px; color: var(--red); font-family: "Times New Roman", serif; font-size: 20px; }
+.tut p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.5; }
+.tut-foot { display: flex; align-items: center; gap: 8px; }
+.tut-dots { display: flex; gap: 5px; margin-right: auto; }
+.tut-dots i { width: 7px; height: 7px; border-radius: 50%; background: #d8c29a; }
+.tut-dots i.on { background: var(--red); width: 18px; border-radius: 4px; }
+.tut-skip { border: 0; background: none; padding: 8px 10px; opacity: .7; }
+.tut-next { border: 0; border-radius: 999px; padding: 9px 16px; font-weight: 700; color: var(--cream); background: linear-gradient(#a3221b, var(--red)); }
+.tap-ring { pointer-events: none; }

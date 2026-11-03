@@ -38,3 +38,24 @@ test('gõ trong ô input không điều khiển', () => {
   expect(c.move).toEqual({ x: 0, z: 0 });
   input.remove();
 });
+
+const ptr = (type: string, o: Record<string, unknown>) => Object.assign(new Event(type, { bubbles: true }), { pointerId: 1, pointerType: 'mouse', isPrimary: true, ...o });
+
+test('bấm nhanh không kéo → sự kiện tap; kéo thì không', () => {
+  c = new Controls(document.body);
+  const taps: [number, number][] = [];
+  c.onTap = (x, y) => taps.push([x, y]);
+  document.body.dispatchEvent(ptr('pointerdown', { clientX: 100, clientY: 200 }));
+  window.dispatchEvent(ptr('pointerup', { clientX: 102, clientY: 201 }));
+  document.body.dispatchEvent(ptr('pointerdown', { clientX: 100, clientY: 200 }));
+  window.dispatchEvent(ptr('pointermove', { clientX: 160, clientY: 200 }));
+  window.dispatchEvent(ptr('pointerup', { clientX: 160, clientY: 200 }));
+  expect(taps).toEqual([[102, 201]]);
+});
+test('giữ Shift → run', () => {
+  c = new Controls(document.body);
+  key('keydown', 'ShiftLeft');
+  expect(c.run).toBe(true);
+  key('keyup', 'ShiftLeft');
+  expect(c.run).toBe(false);
+});

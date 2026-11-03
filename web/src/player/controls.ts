@@ -16,6 +16,10 @@ export class Controls {
   camYaw = 0;
   camPitch = 0.32;
   camDist = 6;
+  /** Bấm nhanh không kéo (toạ độ màn hình) — dùng cho "bấm xuống nền để đi". */
+  onTap: ((x: number, y: number) => void) | null = null;
+  private shift = false;
+  private tapCand = new Map<number, { x: number; y: number; t: number; moved: boolean }>();
   private down = new Set<string>();
   private joy = { x: 0, z: 0 };
   private joyId: number | null = null;
@@ -38,12 +42,17 @@ export class Controls {
     document.getElementById('ui')?.appendChild(this.joyBase);
 
     this.on(window, 'keydown', (e: KeyboardEvent) => {
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') { this.shift = true; return; }
       if (isTyping(e.target) || !KEYS[e.code]) return;
       this.down.add(e.code);
       this.recompute();
     });
-    this.on(window, 'keyup', (e: KeyboardEvent) => { this.down.delete(e.code); this.recompute(); });
-    this.on(window, 'blur', () => { this.down.clear(); this.joy = { x: 0, z: 0 }; this.recompute(); });
+    this.on(window, 'keyup', (e: KeyboardEvent) => {
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') this.shift = false;
+      this.down.delete(e.code);
+      this.recompute();
+    });
+    this.on(window, 'blur', () => { this.shift = false; this.down.clear(); this.joy = { x: 0, z: 0 }; this.recompute(); });
     this.on(el, 'pointerdown', (e: PointerEvent) => this.pointerDown(e));
     this.on(window, 'pointermove', (e: PointerEvent) => this.pointerMove(e));
     this.on(window, 'pointerup', (e: PointerEvent) => this.pointerUp(e));
@@ -52,6 +61,8 @@ export class Controls {
   }
 
   get hasTouch() { return this.joyId !== null; }
+  /** Chạy: giữ Shift, hoặc đẩy joystick hết cỡ. */
+  get run(): boolean { return this.shift || Math.hypot(this.joy.x, this.joy.z) > 0.95; }
 
   private on<T extends Event>(t: EventTarget, type: string, fn: (e: T) => void, opts?: AddEventListenerOptions) {
     t.addEventListener(type, fn as EventListener, opts);
@@ -61,6 +72,7 @@ export class Controls {
   private zoom(d: number) { this.camDist = Math.max(3, Math.min(11, this.camDist + d)); }
 
   private pointerDown(e: PointerEvent) {
+    this.tapCand.set(e.pointerId, { x: e.clientX, y: e.clientY, t: performance.now(), moved: false });
     if (e.pointerType === 'touch') {
       this.pinch.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (this.pinch.size === 2) {
@@ -83,6 +95,8 @@ export class Controls {
   }
 
   private pointerMove(e: PointerEvent) {
+    const tc = this.tapCand.get(e.pointerId);
+    if (tc && Math.hypot(e.clientX - tc.x, e.clientY - tc.y) > 8) tc.moved = true;
     if (this.pinch.has(e.pointerId)) {
       this.pinch.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (this.pinch.size === 2 && this.joyId === null) {
@@ -111,6 +125,9 @@ export class Controls {
   }
 
   private pointerUp(e: PointerEvent) {
+    const tc = this.tapCand.get(e.pointerId);
+    this.tapCand.delete(e.pointerId);
+    if (tc && !tc.moved && performance.now() - tc.t < 350 && this.pinch.size <= 1) this.onTap?.(e.clientX, e.clientY);
     this.pinch.delete(e.pointerId);
     if (e.pointerId === this.joyId) {
       this.joyId = null;

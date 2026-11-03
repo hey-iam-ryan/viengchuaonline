@@ -146,3 +146,27 @@ test('ngày Rằm: màn chào báo dịp lễ, thanh lễ hiện "Rằm tháng 9
   await page.getByRole('button', { name: 'Vào chùa' }).click();
   await expect(page.locator('.ceremony .cer-day')).toHaveText('23/9 âm lịch');
 });
+
+test('hướng dẫn lần đầu: 3 bước, bỏ qua được, lần sau không hiện', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Vào chùa' }).click();
+  await expect(page.getByText('Đi lại trong chùa')).toBeVisible();
+  await page.getByRole('button', { name: 'Tiếp' }).click();
+  await expect(page.getByText('Lễ Phật', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Bỏ qua' }).click();
+  await expect(page.locator('.tut')).toHaveCount(0);
+  await page.reload();
+  await page.getByRole('button', { name: 'Vào chùa' }).click();
+  await page.waitForTimeout(500);
+  await expect(page.locator('.tut')).toHaveCount(0);
+});
+
+test('bấm xuống nền thì nhân vật tự đi tới đó', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Vào chùa' }).click();
+  await page.getByRole('button', { name: 'Bỏ qua' }).click();
+  const z0 = await page.evaluate(() => (window as any).__vco.player.z);
+  const box = (await page.locator('#scene').boundingBox())!;
+  await page.mouse.click(box.width / 2, box.height * 0.42); // phía trước mặt, trên nền sân
+  await expect.poll(() => page.evaluate(() => (window as any).__vco.player.z), { timeout: 15_000 }).toBeLessThan(z0 - 1);
+});
