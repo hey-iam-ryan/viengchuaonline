@@ -23,6 +23,7 @@ import { buildFestive } from './scene/festive';
 import { showTutorial } from './ui/tutorial';
 import { checkIn, loadDaily, record, saveDaily } from './state/daily';
 import { RANKS, practicePoints, rankLabel, rankOf } from './state/rank';
+import { LeafField } from './interact/leafField';
 import { lunarOf, occasionOf } from '@vco/shared/lunar';
 import { occasionLabel } from './ui/occasion';
 import { Actions } from './interact/actions';
@@ -65,6 +66,7 @@ if (!stage) {
   const incense = new IncenseField(scene, temple.burners);
   const festive = buildFestive(scene);
   const lanterns = new LanternField(scene);
+  const leafField = new LeafField(scene);
   const wishTree = new WishTree(scene);
   const net = new NetClient({ url: REALTIME_URL });
   const remotes = new RemotePlayers(scene);
@@ -99,7 +101,7 @@ if (!stage) {
     floats.spawn(kind, (headPos.x * 0.5 + 0.5) * innerWidth, (-headPos.y * 0.5 + 0.5) * innerHeight);
   };
   const actions = new Actions({
-    player, audio, incense, lanterns, wishes: wishTree,
+    player, audio, incense, lanterns, wishes: wishTree, leaves: leafField,
     myName: () => actions.progress.name,
     send: (m) => net.send(m),
     now: () => Date.now(),
@@ -125,18 +127,25 @@ if (!stage) {
       incense.sync((m.incense ?? []).map((i) => ({ ...i, at: i.at - net.serverOffsetMs })), now);
       lanterns.sync((m.lanterns ?? []).map((l) => ({ ...l, at: l.at - net.serverOffsetMs })), now);
       wishTree.sync(m.wishes ?? []);
+      leafField.sync(m.leaves ?? []);
       player.takeChanged();
       net.sendState(stateOf());
     } else if (m.t === 'act') actions.onRemoteAction(m.id, m.a);
     else if (m.t === 'inc') incense.add({ b: m.i.b, at: m.i.at - net.serverOffsetMs });
     else if (m.t === 'den') lanterns.add({ ...m.l, at: m.l.at - net.serverOffsetMs });
     else if (m.t === 'ng') { wishTree.add(m.w); hud?.onRemoteWish(m.w); }
-    else if (m.t === 'hi') {
+    else if (m.t === 'la') {
+      if (m.add) leafField.add(m.add);
+      for (const id of m.del ?? []) leafField.remove(id);
+    } else if (m.t === 'hi') {
       remotes.say(m.from, t('greet.say'), performance.now() / 1000);
       if (m.to === remotes.myId) hud?.onGreeted(m.from, remotes.nameOf(m.from) || t('me'));
     }
   });
-  net.on('status', (s) => { if (s !== 'online') remotes.clear(); });
+  net.on('status', (s) => {
+    if (s !== 'online') remotes.clear();
+    leafField.setLocal(s !== 'online');
+  });
 
   let me: Avatar | null = null;
   let controls: Controls | null = null;
@@ -255,6 +264,7 @@ if (!stage) {
     if (now - lastSky > 2000) { lastSky = now; applyDaylight(now); }
     incense.update(dt, now);
     lanterns.update(now);
+    leafField.update(dt, now);
     wishTree.update(now);
     remotes.update(now, camera.position);
     if (!entered || !controls || !me) {
@@ -303,7 +313,7 @@ if (!stage) {
       player, get controls() { return controls; }, nearestZone, actions, audio, net, remotes,
       zones: ZONES,
       sceneBg: () => (scene.background as THREE.Color).getHex(),
-      lanterns, wishTree,
+      lanterns, wishTree, leafField,
       teleportToCushion(i: number) {
         const z = ZONES.filter((z) => z.kind === 'cushion')[i];
         player.x = z.x; player.z = z.z; actions.sit();

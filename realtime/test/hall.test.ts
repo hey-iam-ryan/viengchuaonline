@@ -191,3 +191,22 @@ test('cấp bậc: có trong welcome của người khác, cập nhật khi lên
   for (let i = 0; i < 5 && k !== 3; i++) k = (await b.c.next('snap')).u.find((p) => p.id === aw.id)?.k ?? k;
   expect(k).toBe(3);
 });
+
+test('quét lá: welcome có lá, quét lá gần thì cả gian thấy lá biến mất, lá xa thì không', async () => {
+  const a = await join(70);
+  const b = await join(70);
+  expect(a.w.leaves.length).toBeGreaterThan(0);
+  const leaf = a.w.leaves[0];
+  const far = a.w.leaves.find((l) => Math.hypot(l.x - leaf.x, l.z - leaf.z) > 6);
+  a.c.send({ t: 's', x: leaf.x, z: leaf.z + 0.5, ry: 0, p: 0 });
+  await sleep(300);
+  if (far) a.c.send({ t: 'quet', id: far.id });
+  a.c.send({ t: 'quet', id: leaf.id });
+  const m = await b.c.next('la');
+  expect(m.del).toEqual([leaf.id]);
+  expect(m.by).toBe(a.w.id);
+  await sleep(200);
+  expect(b.c.msgs.filter((x) => x.t === 'la' && x.del)).toHaveLength(0);
+  const c = await join(70);
+  expect(c.w.leaves.find((l) => l.id === leaf.id)).toBeUndefined();
+});

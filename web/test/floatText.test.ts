@@ -24,3 +24,8 @@ test('không có chữ nào nhắc tới tiền hay mua bán', () => {
   }
   setLang('vi');
 });
+
+test('chữ bay khi quét lá', () => {
+  setLang('vi');
+  expect(floatText('sweep', 0)).toBe('Sân sạch, tâm an +1');
+});

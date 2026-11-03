@@ -17,3 +17,7 @@ test('tên cấp bậc vi/en', () => {
   expect(RANKS.map((r) => r.vi)).toEqual(['Mầm sen', 'Búp sen', 'Sen hé', 'Sen nở', 'Sen vàng', 'Liên hoa']);
   expect(RANKS.map((r) => r.en)).toEqual(['Lotus Sprout', 'Lotus Bud', 'Opening Lotus', 'Blooming Lotus', 'Golden Lotus', 'Sacred Lotus']);
 });
+
+test('quét lá cũng được điểm tu tập', () => {
+  expect(practicePoints({ bowsTotal: 0, incenseTotal: 0, beadRounds: 0, days: 0, leavesTotal: 5 })).toBe(10);
+});

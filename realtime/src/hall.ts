@@ -6,6 +6,7 @@ import {
 } from '@vco/shared/protocol';
 import { clampToPond, resolveCollision, SPAWN } from '@vco/shared/world';
 import { emptyStats, type DayStats } from '@vco/shared/stats';
+import { SWEEP_RANGE, canSweep, spawnLeaves, type LeafState } from '@vco/shared/leaves';
 import { sanitizeName } from '@vco/shared/name';
 import { TokenBucket } from '@vco/shared/rateLimit';
 import type { Env } from './env';
@@ -35,6 +36,7 @@ export class Hall extends DurableObject<Env> {
   private lanterns: Lantern[] = [];
   private wishes: Wish[] = [];
   private pending: DayStats = emptyStats();
+  private leafState: LeafState = { leaves: [], slot: -1 };
   private buckets = new WeakMap<WebSocket, TokenBucket>();
   private dirty = new Set<string>();
   private gone: string[] = [];
@@ -49,6 +51,7 @@ export class Hall extends DurableObject<Env> {
       this.incense = (await ctx.storage.get<Incense[]>('incense')) ?? [];
       this.lanterns = (await ctx.storage.get<Lantern[]>('lanterns')) ?? [];
       this.wishes = (await ctx.storage.get<Wish[]>('wishes')) ?? [];
+      this.leafState = (await ctx.storage.get<LeafState>('leaves')) ?? { leaves: [], slot: -1 };
       this.hall = (await ctx.storage.get<number>('hall')) ?? -1;
     });
   }
@@ -86,6 +89,16 @@ export class Hall extends DurableObject<Env> {
       if (att.violations >= MAX_VIOLATIONS) ws.close(4008, 'policy');
       return;
     }
+    // lá rụng theo thời gian: tính bù khi có hoạt động (không cần hẹn giờ → vẫn hibernate được)
+    if (this.hall >= 0) {
+      const sp = spawnLeaves(this.leafState, this.hall, now);
+      if (sp.added.length) {
+        this.leafState = sp.state;
+        await this.ctx.storage.put('leaves', this.leafState);
+        if (msg.t !== 'hello') this.broadcast({ t: 'la', add: sp.added });
+        else this.broadcast({ t: 'la', add: sp.added }, ws);
+      }
+    }
     if (msg.t === 'hello') {
       if (att.state) return;
       att.state = { id: att.id, n: sanitizeName(msg.name), r: msg.robe, x: SPAWN.x, z: SPAWN.z, ry: SPAWN.ry, p: 0, k: msg.k };
@@ -93,7 +106,7 @@ export class Hall extends DurableObject<Env> {
       const players = this.players().filter((p) => p.id !== att.id);
       this.send(ws, {
         t: 'welcome', id: att.id, hall: att.hall, now, players,
-        incense: this.liveIncense(now), lanterns: this.liveLanterns(now), wishes: this.wishes,
+        incense: this.liveIncense(now), lanterns: this.liveLanterns(now), wishes: this.wishes, leaves: this.leafState.leaves,
       });
       this.markDirty(att.id);
       return;
@@ -121,6 +134,15 @@ export class Hall extends DurableObject<Env> {
         await this.ctx.storage.put('lanterns', this.lanterns);
         this.count('lanterns');
         this.broadcast({ t: 'den', l }, ws);
+        break;
+      }
+      case 'quet': {
+        const leaf = this.leafState.leaves.find((l) => l.id === msg.id);
+        // vị trí phía server cập nhật ~5 lần/giây nên nới thêm 1m cho độ trễ
+        if (!leaf || !canSweep(leaf, att.state.x, att.state.z, SWEEP_RANGE + 1)) return;
+        this.leafState = { ...this.leafState, leaves: this.leafState.leaves.filter((l) => l.id !== msg.id) };
+        await this.ctx.storage.put('leaves', this.leafState);
+        this.broadcast({ t: 'la', del: [msg.id], by: att.id }, ws);
         break;
       }
       case 'rk':

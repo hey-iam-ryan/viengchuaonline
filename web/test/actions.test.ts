@@ -130,3 +130,20 @@ test('mỗi hành động thành công báo onPerform để hiện chữ bay', (
   a.bell(); // xa chuông → không báo
   expect(onPerform).toHaveBeenCalledTimes(3);
 });
+
+test('quét lá: chỉ khi có lá gần, gửi tin, cộng điểm, báo chữ bay', () => {
+  const onPerform = vi.fn();
+  const player = new LocalPlayer();
+  const leaves = { nearest: vi.fn(() => ({ id: 7, x: player.x, z: player.z + 0.5 })), remove: vi.fn() };
+  const sent: ClientMsg[] = [];
+  const a = new Actions({ player, audio: { playBell: vi.fn(), playMo: vi.fn(), playBead: vi.fn(), playChime: vi.fn() } as any, incense: { add: vi.fn() } as any, leaves: leaves as any, send: (m) => sent.push(m), now: () => 0, storage: memStorage(), onPerform });
+  expect(a.available().sweep).toBe(true);
+  expect(a.sweep()).toBe(true);
+  expect(leaves.remove).toHaveBeenCalledWith(7);
+  expect(sent).toEqual([{ t: 'quet', id: 7 }]);
+  expect(a.progress.leavesTotal).toBe(1);
+  expect(onPerform).toHaveBeenCalledWith('sweep');
+  leaves.nearest.mockReturnValue(null as any);
+  expect(a.available().sweep).toBe(false);
+  expect(a.sweep()).toBe(false);
+});

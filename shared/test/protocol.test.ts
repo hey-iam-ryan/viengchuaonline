@@ -60,3 +60,9 @@ test('cấp bậc trong hello và tin cập nhật cấp', () => {
   expect(parseClientMsg('{"t":"rk","k":2}')).toEqual({ t: 'rk', k: 2 });
   expect(parseClientMsg('{"t":"rk","k":9}')).toBeNull();
 });
+
+test('quét lá', () => {
+  expect(parseClientMsg('{"t":"quet","id":42}')).toEqual({ t: 'quet', id: 42 });
+  expect(parseClientMsg('{"t":"quet","id":-1}')).toBeNull();
+  expect(parseClientMsg('{"t":"quet","id":"a"}')).toBeNull();
+});

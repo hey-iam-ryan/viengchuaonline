@@ -6,7 +6,7 @@ const WALLS: Box[] = OBSTACLES.slice(0, 5);
 /** Vùng mái cổng tam quan: lối giữa để trống nên camera đi qua được, chỉ cần thấp hơn mái. */
 const gate = GATE_PILLARS[0];
 const GATE_ZONE: Box = { minX: -9.5, maxX: 9.5, minZ: gate.minZ - 1.2, maxZ: gate.maxZ + 1.2 };
-export const GATE_CAM_MAX_Y = 4.0;
+export const GATE_CAM_MAX_Y = 3.0; // thấp hơn đèn lồng treo ở cổng (3.4–4m)
 
 export function capCameraHeight(x: number, z: number, y: number): number {
   const inGate = x > GATE_ZONE.minX && x < GATE_ZONE.maxX && z > GATE_ZONE.minZ && z < GATE_ZONE.maxZ;

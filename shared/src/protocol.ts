@@ -43,6 +43,7 @@ export interface PlayerState { id: string; n: string; r: Robe; x: number; z: num
 export interface Incense { b: BurnerId; at: number }
 export interface Lantern { x: number; z: number; at: number; s: number }
 export interface Wish { n: string; p: number; at: number }
+export interface LeafMsg { id: number; x: number; z: number }
 
 export type ClientMsg =
   | { t: 'hello'; name: string; robe: Robe; k: number }
@@ -52,16 +53,18 @@ export type ClientMsg =
   | { t: 'den'; x: number; z: number }
   | { t: 'ng'; p: number }
   | { t: 'hi'; to: string }
-  | { t: 'rk'; k: number };
+  | { t: 'rk'; k: number }
+  | { t: 'quet'; id: number };
 
 export type ServerMsg =
-  | { t: 'welcome'; id: string; hall: number; now: number; players: PlayerState[]; incense: Incense[]; lanterns: Lantern[]; wishes: Wish[] }
+  | { t: 'welcome'; id: string; hall: number; now: number; players: PlayerState[]; incense: Incense[]; lanterns: Lantern[]; wishes: Wish[]; leaves: LeafMsg[] }
   | { t: 'snap'; u: PlayerState[]; gone: string[] }
   | { t: 'act'; id: string; a: Action }
   | { t: 'inc'; i: Incense }
   | { t: 'den'; l: Lantern }
   | { t: 'ng'; w: Wish }
   | { t: 'hi'; from: string; to: string }
+  | { t: 'la'; add?: LeafMsg[]; del?: number[]; by?: string }
   | { t: 'full' };
 
 const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
@@ -82,6 +85,8 @@ export function parseClientMsg(raw: string | ArrayBuffer): ClientMsg | null {
   switch (m.t) {
     case 'hello':
       return typeof m.name === 'string' && oneOf(ROBES, m.robe) ? { t: 'hello', name: m.name, robe: m.robe, k: isRank(m.k) ? m.k : 0 } : null;
+    case 'quet':
+      return Number.isInteger(m.id) && m.id >= 0 ? { t: 'quet', id: m.id } : null;
     case 'rk':
       return isRank(m.k) ? { t: 'rk', k: m.k } : null;
     case 's':

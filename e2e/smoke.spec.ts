@@ -198,3 +198,13 @@ test('cấp bậc: đủ điểm thì lên bậc, xem được trong bảng tu t
   await page.getByTestId('quest-chip').click();
   await expect(page.getByText(/Bậc tu tập: 🌷 Búp sen · 30 điểm/)).toBeVisible();
 });
+
+test('quét lá sân chùa (chế độ một mình): đứng cạnh lá thì quét được', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('vco.tutorial.v1', '1'));
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Vào chùa' }).click();
+  await page.waitForFunction(() => (window as any).__vco.leafField.nearest(0, 0, 999));
+  await page.evaluate(() => { const v = (window as any).__vco; const l = v.leafField.nearest(0, 5, 999); v.player.x = l.x; v.player.z = l.z + 0.4; });
+  await page.getByRole('button', { name: 'Quét lá' }).click();
+  await expect(page.locator('.float-text', { hasText: 'Sân sạch, tâm an +1' })).toHaveCount(1);
+});

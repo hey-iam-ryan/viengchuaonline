@@ -21,7 +21,7 @@ class FakeWS {
 }
 const last = () => FakeWS.all.at(-1)!;
 const hello = { name: 'An', robe: 'lam' as const };
-const welcome = (hall: number, now: number): ServerMsg => ({ t: 'welcome', id: 'me', hall, now, players: [], incense: [], lanterns: [], wishes: [] });
+const welcome = (hall: number, now: number): ServerMsg => ({ t: 'welcome', id: 'me', hall, now, players: [], incense: [], lanterns: [], wishes: [], leaves: [] });
 const flush = async () => { for (let i = 0; i < 5; i++) await Promise.resolve(); };
 
 function lobby(...halls: number[]) {

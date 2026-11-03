@@ -114,6 +114,7 @@ export function createHud(d: HudDeps) {
       pickWish();
     }, 'primary-act'),
     greet: btn('act.greet', '🙏', () => { if (greetTarget) d.greet(greetTarget.id); }, 'primary-act'),
+    sweep: btn('act.sweep', '🧹', () => d.actions.sweep(), 'primary-act'),
     bow108: btn('act.bow108', '🙇', () => startBow108()),
     beads: btn('act.beads', '📿', () => d.actions.bead()),
   };
@@ -389,6 +390,7 @@ export function createHud(d: HudDeps) {
       B.incense.hidden = !a.incense;
       B.lantern.hidden = !a.lantern;
       B.wish.hidden = !a.wish;
+      B.sweep.hidden = !a.sweep;
       acc += dt;
       if (acc < 1) return;
       acc = 0;

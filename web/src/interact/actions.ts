@@ -5,6 +5,8 @@ import type { AudioManager } from './audio';
 import type { IncenseField } from './incense';
 import type { LanternField } from './lanterns';
 import type { WishTree } from './wishes';
+import type { LeafField } from './leafField';
+import { SWEEP_RANGE } from '@vco/shared/leaves';
 import type { FloatKind } from '../ui/floatText';
 import { addBow, loadProgress, nextBead, saveProgress, type Progress } from '../state/progress';
 
@@ -16,6 +18,7 @@ export interface ActionDeps {
   incense: Pick<IncenseField, 'add'>;
   lanterns?: Pick<LanternField, 'add'>;
   wishes?: Pick<WishTree, 'add'>;
+  leaves?: Pick<LeafField, 'nearest' | 'remove'>;
   myName?: () => string;
   send: (m: ClientMsg) => void;
   now: () => number;
@@ -26,7 +29,7 @@ export interface ActionDeps {
   onPerform?: (kind: FloatKind) => void;
 }
 
-export interface Available { sit: boolean; bow: boolean; bell: boolean; mo: boolean; incense: BurnerId | null; lantern: boolean; wish: boolean }
+export interface Available { sit: boolean; bow: boolean; bell: boolean; mo: boolean; incense: BurnerId | null; lantern: boolean; wish: boolean; sweep: boolean }
 
 export class Actions {
   progress: Progress;
@@ -35,6 +38,7 @@ export class Actions {
   private lastLantern = -Infinity;
   private lastWish = -Infinity;
   private lastGreet = -Infinity;
+  private lastSweep = -Infinity;
 
   constructor(private readonly d: ActionDeps) {
     this.progress = loadProgress(d.storage, d.now());
@@ -58,6 +62,7 @@ export class Actions {
       incense: zone?.kind === 'burner' ? zone.burner ?? null : null,
       lantern: zone?.kind === 'pond',
       wish: zone?.kind === 'wish',
+      sweep: !!this.d.leaves?.nearest(p.x, p.z, SWEEP_RANGE),
     };
   }
 
@@ -144,6 +149,20 @@ export class Actions {
     this.lastGreet = now;
     this.d.player.bow();
     this.d.send({ t: 'hi', to });
+    return true;
+  }
+
+  /** Quét chiếc lá gần nhất. */
+  sweep(): boolean {
+    const now = this.d.now();
+    const p = this.d.player;
+    const leaf = this.d.leaves?.nearest(p.x, p.z, SWEEP_RANGE);
+    if (!leaf || now - this.lastSweep < 400) return false;
+    this.lastSweep = now;
+    this.d.leaves!.remove(leaf.id);
+    this.setProgress({ ...this.progress, leavesTotal: this.progress.leavesTotal + 1 });
+    this.d.send({ t: 'quet', id: leaf.id });
+    this.d.onPerform?.('sweep');
     return true;
   }
 
