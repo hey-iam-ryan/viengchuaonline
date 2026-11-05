@@ -22,9 +22,16 @@ export function tutorialSteps(mobile: boolean): { title: string; body: string }[
   ];
 }
 
-/** Thẻ hướng dẫn 3 bước ở đáy màn hình, chỉ hiện lần đầu. */
-export function showTutorial(root: HTMLElement): void {
-  if (tutorialSeen()) return;
+/**
+ * Thẻ hướng dẫn 3 bước ở đáy màn hình, chỉ hiện lần đầu.
+ * `onClose` chạy khi thẻ đóng, hoặc ngay lập tức nếu đã xem rồi, để các thông báo khác không đè lên thẻ.
+ * Trả về `true` nếu thẻ được hiện.
+ */
+export function showTutorial(root: HTMLElement, onClose?: () => void, s: Storage | undefined = store()): boolean {
+  if (tutorialSeen(s)) {
+    onClose?.();
+    return false;
+  }
   const steps = tutorialSteps(matchMedia('(pointer: coarse)').matches);
   let i = 0;
   const title = h('h3');
@@ -40,9 +47,11 @@ export function showTutorial(root: HTMLElement): void {
     dots.replaceChildren(...steps.map((_, k) => h('i', { class: k === i ? 'on' : '' })));
   }
   function close() {
-    markTutorialSeen();
+    markTutorialSeen(s);
     card.remove();
+    onClose?.();
   }
   render();
   root.appendChild(card);
+  return true;
 }

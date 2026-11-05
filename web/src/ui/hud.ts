@@ -89,7 +89,10 @@ export function createHud(d: HudDeps) {
   const bowsEl = h('b', { 'data-testid': 'bow-count' });
   const beadsEl = h('b');
   const questChip = h('button', { type: 'button', class: 'quest-chip', 'data-testid': 'quest-chip', on: { click: () => showQuests() } });
-  const stats = h('div', { class: 'stats' }, questChip, h('span', { class: 'sep' }, ' · '), h('span', { class: 'k-bows' }), ' ', bowsEl, h('span', { class: 'sep' }, ' · '), h('span', { class: 'k-beads' }), ' ', beadsEl);
+  // Mỗi cặp nhãn + số nằm chung một khối không ngắt dòng; màn hẹp thì thanh xuống dòng ở dấu chấm giữa.
+  const stats = h('div', { class: 'stats' }, questChip,
+    h('span', { class: 'stat' }, h('span', { class: 'sep' }, ' · '), h('span', { class: 'k-bows' }), ' ', bowsEl),
+    h('span', { class: 'stat' }, h('span', { class: 'sep' }, ' · '), h('span', { class: 'k-beads' }), ' ', beadsEl));
 
   const btn = (key: Key, icon: string, fn: () => void, cls = '') => {
     const b = h('button', { type: 'button', class: `act ${cls}`, on: { click: (e) => { e.stopPropagation(); fn(); } } }, h('span', { class: 'ic', 'aria-hidden': 'true' }, icon), h('span', { class: 'lb' }));
@@ -181,11 +184,15 @@ export function createHud(d: HudDeps) {
     session.stop();
     renderBow108();
   }
-  const hint = h('div', { class: 'hint' });
+  const hint = h('div', { class: 'hint', hidden: true });
   const circPill = h('div', { class: 'pill circ', hidden: true, 'data-testid': 'circ-pill' });
   root.append(circPill);
   const toasts = h('div', { class: 'toasts', 'aria-live': 'polite' });
   root.append(top, ceremony, stats, actionsBar, hint, toasts);
+  // Thanh thống kê có thể xuống 2 dòng trên màn hẹp: báo chiều cao thật để cột nút và dòng gợi ý nằm ngay trên nó.
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(() => document.documentElement.style.setProperty('--stats-h', `${stats.offsetHeight}px`)).observe(stats);
+  }
 
   function toast(msg: string, action?: { label: string; fn: () => void }) {
     const el = h('div', { class: action ? 'toast has-action' : 'toast' }, msg,
@@ -298,11 +305,18 @@ export function createHud(d: HudDeps) {
     userChant = !chantShouldPlay(Date.now());
     d.onAudioPref({ chant: userChant });
     syncAudio();
+    announceOnTouch(chantBtn);
   }
 
   function toggleMusic() {
     d.onAudioPref({ music: !d.actions.progress.music });
     syncAudio();
+    announceOnTouch(musicBtn);
+  }
+
+  /** Điện thoại không có tooltip khi rê chuột: báo trạng thái vừa đổi bằng thông báo ngắn. */
+  function announceOnTouch(b: HTMLElement) {
+    if (matchMedia('(pointer: coarse)').matches) toast(b.title);
   }
 
   function syncAudio() {
@@ -331,6 +345,7 @@ export function createHud(d: HudDeps) {
     shareBtn.setAttribute('aria-label', t('share'));
     shareBtn.title = t('share');
     menuBtn.setAttribute('aria-label', t('menu'));
+    menuBtn.title = t('menu');
     (stats.querySelector('.k-bows') as HTMLElement).textContent = `${t('stats.bows')}:`;
     (stats.querySelector('.k-beads') as HTMLElement).textContent = `${t('stats.beads')}:`;
     hint.textContent = matchMedia('(pointer: coarse)').matches ? t('hint.mobile') : t('hint.desktop');
@@ -350,7 +365,7 @@ export function createHud(d: HudDeps) {
 
   function renderProgress(p: Progress) {
     bowsEl.textContent = String(p.bowsToday);
-    beadsEl.textContent = `${p.beadIndex}/${BEADS} · ${p.beadRounds} ${t('stats.rounds')}`;
+    beadsEl.textContent = `${p.beadIndex}/${BEADS} ${t('stats.beadUnit')} · ${p.beadRounds} ${t('stats.rounds')}`;
   }
 
   async function pollStats() {
@@ -370,12 +385,16 @@ export function createHud(d: HudDeps) {
   });
   onLangChange(relabel);
   relabel();
-  setTimeout(() => hint.classList.add('fade'), 9000);
   document.addEventListener('pointerdown', (e) => { if (!menu.hidden && !top.contains(e.target as Node)) toggleMenu(false); });
 
   let acc = 1;
   return {
     toast,
+    /** Hiện dòng gợi ý điều khiển một lần, sau khi thẻ hướng dẫn (nếu có) đã đóng. */
+    showHint() {
+      hint.hidden = false;
+      setTimeout(() => hint.classList.add('fade'), 9000);
+    },
     onProgress(p: Progress, milestone: 3 | 108 | null) {
       renderProgress(p);
       if (milestone === 3) toast(t('milestone.3'));

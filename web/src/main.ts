@@ -174,12 +174,12 @@ if (!stage) {
         el.textContent = t('today', { incense: formatCount(d.incense, getLang()), bows: formatCount(d.bows, getLang()), lanterns: formatCount(d.lanterns, getLang()) });
     }).catch(() => {});
 
-  showOnboarding(ui, { name: actions.progress.name, robe: actions.progress.robe }, ({ name, robe }) => {
+  showOnboarding(ui, { name: actions.progress.name, robe: actions.progress.robe }, ({ name, robe, lang }) => {
     audio.unlock();
     window.addEventListener('pointerdown', () => audio.unlock()); // bật lại âm thanh nếu iOS đã ngắt
     entered = true;
     const clean = name ? sanitizeName(name) : '';
-    actions.setProgress({ ...actions.progress, name: clean, robe });
+    actions.setProgress({ ...actions.progress, name: clean, robe, ...(lang ? { lang } : {}) });
     myRobe = robe;
     myName = clean;
     controls = new Controls(canvas);
@@ -229,10 +229,13 @@ if (!stage) {
     myRank = rankOf(points());
     me = createAvatar(robe, clean || t('me'), rankLabel(myRank));
     scene.add(me.root);
-    if (ci.firstToday) hud.onCheckIn(daily.streak);
-    else hud.renderQuests();
+    hud.renderQuests();
     net.start({ name: clean, robe, k: myRank }, prefer);
-    showTutorial(ui);
+    // Mỗi lúc chỉ một lớp chữ: thông báo điểm danh và dòng gợi ý chờ thẻ hướng dẫn đóng.
+    showTutorial(ui, () => {
+      if (ci.firstToday) hud?.onCheckIn(daily.streak);
+      hud?.showHint();
+    });
   });
 
   // bấm để đi: tia chiếu xuống mặt đất + vòng đánh dấu điểm đến
