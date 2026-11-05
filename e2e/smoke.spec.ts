@@ -259,3 +259,20 @@ test('đi nhiễu một vòng quanh bảo tháp thì được đếm vòng', asy
   await expect(page.getByTestId('circ-pill')).toHaveText('🛕 Nhiễu tháp · vòng 1/3');
   await expect.poll(() => floatsSeen(page)).toContain('Nhiễu tháp vòng 1 🙏');
 });
+
+test('lầu trống & vườn thiền: đánh trống, ngồi thiền hẹn giờ rồi xả thiền', async ({ page }) => {
+  await recordFloats(page);
+  await page.addInitScript(() => localStorage.setItem('vco.tutorial.v1', '1'));
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Vào chùa' }).click();
+  const go = (id: string) => page.evaluate((id) => { const v = (window as any).__vco; const z = v.zones.find((z: any) => z.id === id); v.player.x = z.x; v.player.z = z.z; }, id);
+  await go('drum');
+  await page.getByRole('button', { name: 'Đánh trống' }).click();
+  await expect.poll(() => floatsSeen(page)).toContain('Tùng… tùng…');
+  await go('zen-0');
+  await page.getByRole('button', { name: 'Ngồi thiền' }).click();
+  await page.getByRole('button', { name: '5 phút', exact: true }).click();
+  await expect(page.getByTestId('zen-left')).toHaveText(/^còn \d:\d\d$/);
+  await page.getByRole('button', { name: 'Xả thiền' }).click();
+  await expect(page.getByText(/Xả thiền 🙏 Bạn đã thiền 0 phút/)).toBeVisible();
+});

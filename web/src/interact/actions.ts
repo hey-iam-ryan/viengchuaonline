@@ -14,7 +14,7 @@ const BELL_COOLDOWN_MS = 2500;
 
 export interface ActionDeps {
   player: LocalPlayer;
-  audio: Pick<AudioManager, 'playBell' | 'playMo' | 'playBead' | 'playChime'>;
+  audio: Pick<AudioManager, 'playBell' | 'playMo' | 'playBead' | 'playChime'> & { playDrum?: () => void };
   incense: Pick<IncenseField, 'add'>;
   lanterns?: Pick<LanternField, 'add'>;
   wishes?: Pick<WishTree, 'add'>;
@@ -30,7 +30,7 @@ export interface ActionDeps {
   onPerform?: (kind: FloatKind) => void;
 }
 
-export interface Available { sit: boolean; bow: boolean; bell: boolean; mo: boolean; incense: BurnerId | null; lantern: boolean; wish: boolean; sweep: boolean; cauan: boolean; phongsinh: boolean }
+export interface Available { sit: boolean; bow: boolean; bell: boolean; mo: boolean; incense: BurnerId | null; lantern: boolean; wish: boolean; sweep: boolean; cauan: boolean; phongsinh: boolean; drum: boolean; zen: boolean }
 
 export class Actions {
   progress: Progress;
@@ -42,6 +42,7 @@ export class Actions {
   private lastSweep = -Infinity;
   private lastCauAn = -Infinity;
   private lastFish = -Infinity;
+  private lastDrum = -Infinity;
 
   constructor(private readonly d: ActionDeps) {
     this.progress = loadProgress(d.storage, d.now());
@@ -68,6 +69,8 @@ export class Actions {
       sweep: !!this.d.leaves?.nearest(p.x, p.z, SWEEP_RANGE),
       cauan: zone?.kind === 'quanam',
       phongsinh: zone?.kind === 'phongsinh',
+      drum: zone?.kind === 'drum',
+      zen: zone?.kind === 'zen' && p.pose !== Pose.Sit,
     };
   }
 
@@ -169,6 +172,25 @@ export class Actions {
     return true;
   }
 
+  /** Đánh trống ở lầu trống. */
+  drum(): boolean {
+    const now = this.d.now();
+    if (!this.available().drum || now - this.lastDrum < 1500) return false;
+    this.lastDrum = now;
+    this.d.audio.playDrum?.();
+    this.d.send({ t: 'a', a: 'trong' });
+    this.d.onPerform?.('drum');
+    return true;
+  }
+
+  /** Ngồi lên tảng đá thiền gần nhất. */
+  sitZen(): boolean {
+    const zone = nearestZone(this.d.player.x, this.d.player.z);
+    if (zone?.kind !== 'zen') return false;
+    this.d.player.sitAt(zone);
+    return true;
+  }
+
   /** Phóng sinh: thả cá chép xuống hồ lớn. */
   phongSinh(): boolean {
     const now = this.d.now();
@@ -206,5 +228,6 @@ export class Actions {
   onRemoteAction(_id: string, a: Action): void {
     if (a === 'chuong') this.d.audio.playBell(0.45);
     else if (a === 'mo') this.d.audio.playMo(0.35);
+    else if (a === 'trong') this.d.audio.playDrum?.();
   }
 }

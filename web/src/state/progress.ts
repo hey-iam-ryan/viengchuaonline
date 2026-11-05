@@ -9,6 +9,7 @@ export interface Progress {
   beadRounds: number;
   incenseTotal: number;
   leavesTotal: number;
+  zenMinutes: number;
   name: string;
   robe: Robe;
   lang: Lang | null;
@@ -22,7 +23,7 @@ export const BEADS = 108;
 export const vnDay = (now: number) => new Date(now + 7 * 3_600_000).toISOString().slice(0, 10);
 
 const defaults = (now: number): Progress => ({
-  bowsTotal: 0, bowsToday: 0, day: vnDay(now), beadIndex: 0, beadRounds: 0, incenseTotal: 0, leavesTotal: 0,
+  bowsTotal: 0, bowsToday: 0, day: vnDay(now), beadIndex: 0, beadRounds: 0, incenseTotal: 0, leavesTotal: 0, zenMinutes: 0,
   name: '', robe: 'lam', lang: null, music: true, chant: false,
 });
 
@@ -45,6 +46,7 @@ export function loadProgress(storage: Storage | undefined = safeStorage(), now =
     beadRounds: nat(raw.beadRounds),
     incenseTotal: nat(raw.incenseTotal),
     leavesTotal: nat(raw.leavesTotal),
+    zenMinutes: nat(raw.zenMinutes),
     name: typeof raw.name === 'string' ? raw.name.slice(0, 64) : '',
     robe: ROBES.includes(raw.robe) ? raw.robe : 'lam',
     lang: raw.lang === 'vi' || raw.lang === 'en' ? raw.lang : null,

@@ -167,3 +167,12 @@ test('phóng sinh bên hồ: gửi tin, có cooldown, xa hồ thì không', () =
   expect(s.a.phongSinh()).toBe(true);
   expect(setup().a.phongSinh()).toBe(false);
 });
+
+test('đánh trống ở lầu trống, có cooldown', () => {
+  const s = setup('drum');
+  expect(s.a.available().drum).toBe(true);
+  s.a.drum();
+  s.a.drum();
+  expect(s.sent).toEqual([{ t: 'a', a: 'trong' }]);
+  expect(setup().a.available().drum).toBe(false);
+});

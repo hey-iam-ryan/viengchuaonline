@@ -120,6 +120,14 @@ export class AudioManager {
   playBell(volume = 1): void { if (this.ctx) this.bigBell(0, 'sfx', volume); }
   playMo(volume = 1): void { if (this.ctx) this.mo(0, 'sfx', volume); }
   playChime(volume = 1): void { if (this.ctx) this.smallBell(0, 'sfx', volume); }
+  /** Trống chùa: tiếng trầm, ngân ngắn. */
+  playDrum(volume = 1): void {
+    if (!this.ctx) return;
+    this.tone(62, 1.1, 0.9 * volume, 'sine', 0, 'sfx', 1.8);
+    this.tone(124, 0.4, 0.35 * volume, 'triangle', 0, 'sfx', 1.4);
+    this.click(0, 'sfx', 0.25 * volume);
+  }
+
   playBead(volume = 1): void { if (this.ctx) this.tone(2400 + Math.random() * 400, 0.04, 0.18 * volume, 'triangle'); }
 
   /** Gõ mõ tụng kinh đều nhịp trên lưới thời gian chung + chuông mỗi 24 nhịp. */
