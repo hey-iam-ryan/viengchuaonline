@@ -8,8 +8,8 @@ export const RANKS = [
   { min: 3000, vi: 'Liên hoa', en: 'Sacred Lotus', icon: '✨' },
 ] as const;
 
-export function practicePoints(p: { bowsTotal: number; incenseTotal: number; beadRounds: number; days: number; leavesTotal?: number }): number {
-  return p.bowsTotal + p.incenseTotal * 3 + p.beadRounds * 10 + p.days * 5 + (p.leavesTotal ?? 0) * 2;
+export function practicePoints(p: { bowsTotal: number; incenseTotal: number; beadRounds: number; days: number; leavesTotal?: number; zenMinutes?: number }): number {
+  return p.bowsTotal + p.incenseTotal * 3 + p.beadRounds * 10 + p.days * 5 + (p.leavesTotal ?? 0) * 2 + (p.zenMinutes ?? 0) * 2;
 }
 
 export function rankOf(points: number): number {

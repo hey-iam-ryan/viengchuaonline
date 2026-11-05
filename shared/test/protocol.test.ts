@@ -71,3 +71,5 @@ test('hành động mới: cầu an, phóng sinh', () => {
   expect(parseClientMsg('{"t":"a","a":"cauan"}')).toEqual({ t: 'a', a: 'cauan' });
   expect(parseClientMsg('{"t":"a","a":"ca"}')).toEqual({ t: 'a', a: 'ca' });
 });
+
+test('đánh trống', () => expect(parseClientMsg('{"t":"a","a":"trong"}')).toEqual({ t: 'a', a: 'trong' }));

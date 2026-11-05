@@ -207,6 +207,11 @@ if (!stage) {
         return { label: rankLabel(k), points: p, nextLabel: nx ? rankLabel(k + 1) : null, toNext: nx ? nx.min - p : 0 };
       },
       nearby: () => nearestPlayer(remotes.positions(), player.x, player.z),
+      onZen: (n) => {
+        actions.setProgress({ ...actions.progress, zenMinutes: actions.progress.zenMinutes + n });
+        floatAtMe('zen');
+        refreshRank();
+      },
       greet: (id) => { if (actions.greet(id)) me?.say(t('greet.say'), performance.now() / 1000); },
       invite: () => inviteUrl(shareBase, net.status === 'online' ? net.hall : null),
       shareCard: async (kind, n) => {

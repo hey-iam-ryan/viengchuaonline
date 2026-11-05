@@ -1,7 +1,7 @@
 import type { BurnerId } from './protocol';
 
 export interface Box { minX: number; maxX: number; minZ: number; maxZ: number }
-export type ZoneKind = 'cushion' | 'burner' | 'bell' | 'mo' | 'pond' | 'wish' | 'quanam' | 'phongsinh';
+export type ZoneKind = 'cushion' | 'burner' | 'bell' | 'mo' | 'pond' | 'wish' | 'quanam' | 'phongsinh' | 'drum' | 'zen';
 export interface Zone { id: string; kind: ZoneKind; x: number; z: number; r: number; burner?: BurnerId }
 
 const box = (minX: number, maxX: number, minZ: number, maxZ: number): Box => ({ minX, maxX, minZ, maxZ });
@@ -23,6 +23,20 @@ const LAKE_PARTS: Box[] = [
   box(ISLAND.maxX, LAKE.maxX, ISLAND.minZ, -BRIDGE_HALF), // giữa đảo và bờ, nam cầu
   box(ISLAND.maxX, LAKE.maxX, BRIDGE_HALF, ISLAND.maxZ), // giữa đảo và bờ, bắc cầu
 ];
+
+/** Lầu trống: đối xứng lầu chuông qua trục giữa sân. */
+export const DRUM_TOWER: Box = box(-13, -11, -3, -1);
+
+/** Vườn thiền phía Đông: khoảng trống giữa rừng trúc, lối vào từ phía Tây (hướng chánh điện). */
+export const ZEN = { x: 36, z: 0, clearing: 6 };
+export const BAMBOO: { x: number; z: number }[] = [];
+for (let a = 0; a < 360; a += 20) {
+  if (a > 150 && a < 210) continue; // chừa lối vào phía Tây
+  for (const r of [9.5, 12.5]) {
+    const rad = ((a + (r > 10 ? 10 : 0)) * Math.PI) / 180;
+    BAMBOO.push({ x: Math.round((ZEN.x + Math.cos(rad) * r) * 10) / 10, z: Math.round((ZEN.z + Math.sin(rad) * r) * 10) / 10 });
+  }
+}
 
 /** Bảo tháp phía sau chánh điện; lối đi nhiễu tháp là vành khăn quanh tháp. */
 export const TOWER = { x: 0, z: -45 };
@@ -74,6 +88,8 @@ export const OBSTACLES: Box[] = [
   ...GATE_PILLARS,
   box(WISH_TREE.x - 0.6, WISH_TREE.x + 0.6, WISH_TREE.z - 0.6, WISH_TREE.z + 0.6),
   ...LAKE_PARTS,
+  DRUM_TOWER,
+  ...BAMBOO.map((b) => box(b.x - 0.8, b.x + 0.8, b.z - 0.8, b.z + 0.8)),
   box(TOWER.x - TOWER_HALF, TOWER.x + TOWER_HALF, TOWER.z - TOWER_HALF, TOWER.z + TOWER_HALF),
   box(QUAN_AM.x - 1, QUAN_AM.x + 1, QUAN_AM.z - 1, QUAN_AM.z + 1),
   ...STONE_LANTERNS.map((l) => box(l.x - 0.3, l.x + 0.3, l.z - 0.3, l.z + 0.3)),
@@ -96,6 +112,11 @@ export const ZONES: Zone[] = [
   { id: 'pond', kind: 'pond', x: -3.2, z: 4, r: 1.6 },
   { id: 'pond-n', kind: 'pond', x: -7, z: 9, r: 1.6 },
   { id: 'wish', kind: 'wish', x: 12.6, z: 8, r: 1.6 },
+  { id: 'drum', kind: 'drum', x: -12, z: 0.2, r: 1.6 },
+  ...[0, 60, 120, 180, 240, 300].map((deg, i): Zone => ({
+    id: `zen-${i}`, kind: 'zen', x: Math.round((ZEN.x + Math.cos((deg * Math.PI) / 180) * 3) * 100) / 100,
+    z: Math.round((ZEN.z + Math.sin((deg * Math.PI) / 180) * 3) * 100) / 100, r: 0.9,
+  })),
   { id: 'quanam', kind: 'quanam', x: -34.6, z: 0, r: 1.6 },
   { id: 'phongsinh', kind: 'phongsinh', x: -22.6, z: 7, r: 1.6 },
 ];

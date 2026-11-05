@@ -7,6 +7,7 @@ import { MAT, tileTexture } from './materials';
 import { glowSprite } from './glow';
 import { buildLakeArea } from './lakeArea';
 import { buildTowerArea } from './towerArea';
+import { buildGardenArea } from './gardenArea';
 
 const GLOWS: THREE.Sprite[] = [];
 
@@ -286,6 +287,7 @@ export function buildTemple(scene: THREE.Scene): Temple {
   // --- hồ lớn, tượng Quan Âm, đường vào chùa, cổng ngoài ---
   GLOWS.push(...buildLakeArea(root));
   GLOWS.push(...buildTowerArea(root));
+  buildGardenArea(root);
 
   // --- cổng tam quan ---
   for (const p of GATE_PILLARS) {

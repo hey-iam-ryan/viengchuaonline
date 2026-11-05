@@ -123,3 +123,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .quests li.done span { text-decoration: line-through; opacity: .75; }
 .circ { position: fixed; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top) + 112px); font-size: 13.5px; font-weight: 700; color: var(--red); pointer-events: none !important; }
 .circ[hidden] { display: none; }
+.zen { position: fixed; left: 50%; top: 22%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none !important; }
+.zen[hidden] { display: none; }
+.zen-circle { width: 120px; height: 120px; border-radius: 50%; background: radial-gradient(circle, rgba(242,201,90,.55), rgba(242,201,90,.08) 70%); border: 2px solid rgba(242,201,90,.8); transition: transform .25s linear; }
+.zen-text { color: var(--cream); font-size: 18px; font-weight: 700; text-shadow: 0 2px 8px rgba(0,0,0,.6); }
+.zen-left { color: #f2c95a; font-size: 14px; text-shadow: 0 1px 6px rgba(0,0,0,.6); }
+.zen .b108-stop { pointer-events: auto; }
+.zen-opts { display: flex; gap: 8px; justify-content: center; margin-bottom: 8px; }
+.zen-opts .wish-opt { text-align: center; flex: 1; font-weight: 700; }

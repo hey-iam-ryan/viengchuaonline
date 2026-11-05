@@ -13,6 +13,7 @@ import { MUSIC_TRACKS } from '../interact/soundtrack';
 import { PRAYERS, type Wish } from '@vco/shared/protocol';
 import type { CardKind } from './shareCard';
 import { Bow108, BOW_TARGET } from '../interact/bow108';
+import { Meditation, breathPhase } from '../interact/meditation';
 import { Pose } from '@vco/shared/protocol';
 import { lunarOf } from '@vco/shared/lunar';
 import { lunarShort, occasionLabel } from './occasion';
@@ -60,6 +61,7 @@ export interface HudDeps {
   daily: () => DailyState;
   rank: () => { label: string; points: number; nextLabel: string | null; toNext: number };
   greet: (id: string) => void;
+  onZen?: (minutes: number) => void;
 }
 
 /** Thanh trạng thái, nút hành động theo ngữ cảnh, bộ đếm, giờ lễ, chia sẻ, cúng dường. */
@@ -117,10 +119,43 @@ export function createHud(d: HudDeps) {
     sweep: btn('act.sweep', '🧹', () => d.actions.sweep(), 'primary-act'),
     cauan: btn('act.cauan', '🪷', () => d.actions.cauAn(), 'primary-act'),
     fish: btn('act.fish', '🐟', () => d.actions.phongSinh(), 'primary-act'),
+    drum: btn('act.drum', '🥁', () => d.actions.drum(), 'primary-act'),
+    zen: btn('act.zen', '🧘', () => { if (d.actions.sitZen()) pickZen(); }, 'primary-act'),
     bow108: btn('act.bow108', '🙇', () => startBow108()),
     beads: btn('act.beads', '📿', () => d.actions.bead()),
   };
   const actionsBar = h('div', { class: 'actions' }, ...Object.values(B));
+
+  // --- ngồi thiền hẹn giờ ---
+  const zenSession = new Meditation();
+  const zenCircle = h('div', { class: 'zen-circle' });
+  const zenText = h('div', { class: 'zen-text' });
+  const zenLeft = h('div', { class: 'zen-left', 'data-testid': 'zen-left' });
+  const zenStop = h('button', { type: 'button', class: 'b108-stop', on: { click: () => endZen(true) } });
+  const zenBox = h('div', { class: 'zen', hidden: true }, zenCircle, zenText, zenLeft, zenStop);
+  root.append(zenBox);
+  function pickZen() {
+    const opts = h('div', { class: 'zen-opts' }, ...[5, 10, 15].map((n) =>
+      h('button', { type: 'button', class: 'wish-opt', on: { click: () => { box.remove(); startZen(n); } } }, t('zen.min', { n }))));
+    const box: HTMLDivElement = h('div', { class: 'onboard', role: 'dialog', 'aria-modal': 'true' },
+      h('div', { class: 'card' }, h('h2', {}, `🧘 ${t('zen.title')}`), opts,
+        h('button', { type: 'button', class: 'link', on: { click: () => { box.remove(); } } }, t('close'))));
+    root.appendChild(box);
+  }
+  function startZen(n: number) {
+    zenSession.start(n, Date.now());
+    zenStop.textContent = t('zen.stop');
+    zenBox.hidden = false;
+    d.audio.playChime();
+  }
+  function endZen(manual: boolean) {
+    if (manual) zenSession.stop(Date.now());
+    zenBox.hidden = true;
+    d.audio.playChime();
+    const n = zenSession.minutesDone;
+    if (n > 0) d.onZen?.(n);
+    toast(t('zen.done', { n }));
+  }
 
   let greetTarget: { id: string; n: string } | null = null;
 
@@ -401,6 +436,20 @@ export function createHud(d: HudDeps) {
       B.sweep.hidden = !a.sweep;
       B.cauan.hidden = !a.cauan;
       B.fish.hidden = !a.phongsinh;
+      B.drum.hidden = !a.drum;
+      B.zen.hidden = !a.zen || zenSession.active;
+      if (zenSession.active) {
+        if (d.player.pose !== Pose.Sit && d.player.pose !== Pose.Bow) endZen(true);
+        else {
+          const z = zenSession.tick(Date.now());
+          const bp = breathPhase(Date.now());
+          const sc = bp.inhale ? 0.6 + 0.4 * bp.k : 1 - 0.4 * bp.k;
+          zenCircle.style.transform = `scale(${sc.toFixed(3)})`;
+          zenText.textContent = t(bp.inhale ? 'zen.in' : 'zen.out');
+          zenLeft.textContent = t('zen.left', { t: formatCountdown(z.remainingMs).replace(/^0:0?/, '') });
+          if (z.done) endZen(false);
+        }
+      }
       acc += dt;
       if (acc < 1) return;
       acc = 0;

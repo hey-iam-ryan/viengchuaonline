@@ -84,3 +84,8 @@ test('đường đi bộ từ chỗ xuất phát tới đảo Quan Âm thông su
     expect(Math.hypot(tx - p.x, tz - p.z)).toBeLessThan(0.5);
   }
 });
+
+test('có lầu trống và chỗ ngồi thiền trong vườn trúc', () => {
+  expect(ZONES.find((z) => z.kind === 'drum')).toBeDefined();
+  expect(ZONES.filter((z) => z.kind === 'zen').length).toBeGreaterThanOrEqual(4);
+});
