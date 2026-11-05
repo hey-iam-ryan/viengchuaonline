@@ -63,3 +63,28 @@ test('đứng ở chỗ bất kỳ trong khuôn viên: gần như luôn có đi�
   expect(free).toBeGreaterThan(900);
   expect(ok / free).toBeGreaterThan(0.97); // phần còn lại là góc khuất (sau tượng, giữa khóm trúc): đi kiểu trượt dọc vật cản
 });
+
+/** Đi từng bước 0,15 m bằng hàm va chạm thật của người chơi; true nếu không bước nào bị đẩy lệch. */
+function simulateStraight(a: Pt, b: Pt): boolean {
+  const n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / 0.15));
+  for (let k = 1; k <= n; k++) {
+    const x = a.x + ((b.x - a.x) * k) / n;
+    const z = a.z + ((b.z - a.z) * k) / n;
+    const q = resolveCollision(x, z);
+    if (Math.hypot(q.x - x, q.z - z) > 0.02) return false;
+  }
+  return true;
+}
+
+test('canWalk khớp với hàm va chạm thật: mọi cạnh và mọi lộ trình đi từng bước đều không bị đẩy lệch', () => {
+  for (const [a, b] of LINKS) expect(simulateStraight(WAYPOINTS[a], WAYPOINTS[b]), `${a} → ${b}`).toBe(true);
+  for (const s of [{ x: SPAWN.x, z: SPAWN.z }, ...PLACES]) {
+    for (const p of PLACES) {
+      let cur: Pt = s;
+      for (const q of routeTo(s.x, s.z, p.id)) {
+        expect(simulateStraight(cur, q), `(${cur.x},${cur.z}) → (${q.x},${q.z})`).toBe(true);
+        cur = q;
+      }
+    }
+  }
+});

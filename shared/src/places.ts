@@ -1,4 +1,4 @@
-import { resolveCollision } from './world';
+import { BOUNDS, OBSTACLES, PLAYER_RADIUS, type Box } from './world';
 
 /** Nơi đến trong bản đồ: điểm đứng đặt sát vùng tương tác để tới nơi là hiện nút hành động. */
 export type PlaceId = 'gate' | 'courtyard' | 'hall' | 'bell' | 'drum' | 'wish' | 'zen' | 'lake' | 'quanam' | 'stupa';
@@ -62,23 +62,57 @@ export const PLACES: Place[] = [
   { id: 'stupa', icon: '🛕', x: 0, z: -38.5, node: 'stupa' },
 ];
 
-const STEP = 0.15;
-
-/**
- * Đi thẳng từ a tới b mà không chạm vật cản nào (mô phỏng từng bước 0,15 m bằng resolveCollision).
- * Không chấp nhận "trượt dọc" vật cản: lộ trình phải trông như người đi bộ bình thường.
- */
-export function canWalk(a: Pt, b: Pt): boolean {
-  const len = Math.hypot(b.x - a.x, b.z - a.z);
-  const n = Math.max(1, Math.ceil(len / STEP));
-  for (let k = 1; k <= n; k++) {
-    const t = k / n;
-    const x = a.x + (b.x - a.x) * t;
-    const z = a.z + (b.z - a.z) * t;
-    const q = resolveCollision(x, z);
-    if (Math.hypot(q.x - x, q.z - z) > 0.02) return false;
+/** Đoạn a→b có cắt hộp (nới mx theo trục x, mz theo trục z) không. Thuật toán slab. */
+function segmentHitsBox(a: Pt, b: Pt, box: Box, mx: number, mz: number): boolean {
+  let t0 = 0;
+  let t1 = 1;
+  for (const [p, d, lo, hi] of [
+    [a.x, b.x - a.x, box.minX - mx, box.maxX + mx],
+    [a.z, b.z - a.z, box.minZ - mz, box.maxZ + mz],
+  ]) {
+    if (Math.abs(d) < 1e-9) {
+      if (p <= lo || p >= hi) return false;
+      continue;
+    }
+    let u = (lo - p) / d;
+    let v = (hi - p) / d;
+    if (u > v) [u, v] = [v, u];
+    t0 = Math.max(t0, u);
+    t1 = Math.min(t1, v);
+    if (t0 >= t1) return false;
   }
   return true;
+}
+
+/**
+ * Đi thẳng từ a tới b mà không chạm vật cản nào: đoạn thẳng không cắt vật cản nào đã nới thêm bán kính người chơi,
+ * và cả đoạn nằm trong khuôn viên. Không chấp nhận "trượt dọc" vật cản: lộ trình phải trông như người đi bộ bình thường.
+ * Tính hình học trực tiếp (không mô phỏng từng bước) để bấm chọn nơi đến không bị trễ trên máy yếu.
+ */
+export function canWalk(a: Pt, b: Pt): boolean {
+  const r = PLAYER_RADIUS - 0.02;
+  const inBounds = (p: Pt) => p.x >= BOUNDS.minX + r && p.x <= BOUNDS.maxX - r && p.z >= BOUNDS.minZ + r && p.z <= BOUNDS.maxZ - r;
+  if (!inBounds(a) || !inBounds(b)) return false;
+  return !OBSTACLES.some((box) => touches(a, b, box, r));
+}
+
+/** Khoảng cách từ điểm p tới đoạn a→b. */
+function distToSegment(p: Pt, a: Pt, b: Pt): number {
+  const dx = b.x - a.x;
+  const dz = b.z - a.z;
+  const len2 = dx * dx + dz * dz;
+  const t = len2 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / len2)) : 0;
+  return Math.hypot(p.x - (a.x + dx * t), p.z - (a.z + dz * t));
+}
+
+/**
+ * Người chơi (hình tròn bán kính r) đi dọc a→b có chạm hộp không: đoạn thẳng cắt "hộp bo góc"
+ * = hộp nới r theo x, hộp nới r theo z, và 4 hình tròn bán kính r ở 4 góc (khớp với resolveCollision).
+ */
+function touches(a: Pt, b: Pt, box: Box, r: number): boolean {
+  if (segmentHitsBox(a, b, box, r, 0) || segmentHitsBox(a, b, box, 0, r)) return true;
+  for (const cx of [box.minX, box.maxX]) for (const cz of [box.minZ, box.maxZ]) if (distToSegment({ x: cx, z: cz }, a, b) < r) return true;
+  return false;
 }
 
 const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.z - b.z);
