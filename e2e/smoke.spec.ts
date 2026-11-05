@@ -165,8 +165,10 @@ test('hướng dẫn lần đầu: 3 bước, bỏ qua được, lần sau khôn
   await expect(page.getByText('Đi lại trong chùa')).toBeVisible();
   await page.getByRole('button', { name: 'Tiếp' }).click();
   await expect(page.getByText('Lễ Phật', { exact: true })).toBeVisible();
+  await expect(page.locator('.hint')).toBeHidden(); // không đè lên thẻ hướng dẫn
   await page.getByRole('button', { name: 'Bỏ qua' }).click();
   await expect(page.locator('.tut')).toHaveCount(0);
+  await expect(page.locator('.hint')).toBeVisible();
   await page.reload();
   await page.getByRole('button', { name: 'Vào chùa' }).click();
   await page.waitForTimeout(500);
@@ -193,8 +195,9 @@ test('bấm xuống nền thì nhân vật tự đi tới đó', async ({ page }
 test('điểm danh & nhiệm vụ: vái 3 lần thì xong nhiệm vụ đầu, xem được bảng nhiệm vụ', async ({ page }) => {
   await page.goto('./');
   await page.getByRole('button', { name: 'Vào chùa' }).click();
-  await expect(page.getByText(/Điểm danh hôm nay/)).toBeVisible();
+  await expect(page.getByText(/Điểm danh hôm nay/)).toHaveCount(0); // chờ thẻ hướng dẫn đóng
   await page.getByRole('button', { name: 'Bỏ qua' }).click();
+  await expect(page.getByText(/Điểm danh hôm nay/)).toBeVisible();
   await expect(page.getByTestId('quest-chip')).toHaveText('📜 0/5');
   for (let i = 0; i < 3; i++) {
     await page.getByRole('button', { name: 'Vái', exact: true }).click();
@@ -275,4 +278,40 @@ test('lầu trống & vườn thiền: đánh trống, ngồi thiền hẹn gi�
   await expect(page.getByTestId('zen-left')).toHaveText(/^còn \d:\d\d$/);
   await page.getByRole('button', { name: 'Xả thiền' }).click();
   await expect(page.getByText(/Xả thiền 🙏 Bạn đã thiền 0 phút/)).toBeVisible();
+});
+
+test('điện thoại: mọi nút hành động đều có chữ; bấm 🎵 thì báo trạng thái', async ({ browser }) => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, locale: 'vi-VN' });
+  const page = await ctx.newPage();
+  await page.addInitScript(() => localStorage.setItem('vco.tutorial.v1', '1'));
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Vào chùa' }).click();
+  await page.waitForFunction(() => (window as any).__vco?.zones);
+  for (const id of ['drum', 'zen-0']) {
+    await page.evaluate((id) => { const v = (window as any).__vco; const z = v.zones.find((z: any) => z.id === id); v.player.x = z.x; v.player.z = z.z; }, id);
+    await expect(page.locator('.act:not([hidden])').first()).toBeVisible();
+    const labels = await page.locator('.act:not([hidden]) .lb').evaluateAll((els) => els.map((e) => ({ text: e.textContent?.trim() ?? '', w: e.getBoundingClientRect().width })));
+    expect(labels.length).toBeGreaterThan(0);
+    for (const l of labels) {
+      expect(l.text).not.toBe('');
+      expect(l.w).toBeGreaterThan(0);
+    }
+  }
+  await page.getByRole('button', { name: 'Nhạc thiền' }).click();
+  await expect(page.locator('.toast', { hasText: /^Nhạc thiền: / })).toBeVisible();
+  await ctx.close();
+});
+
+test('màn chào: đổi ngôn ngữ bằng nút gạt, lựa chọn được nhớ cho lần sau', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('vco.tutorial.v1', '1'));
+  await page.goto('./');
+  await expect(page.getByRole('button', { name: 'Tiếng Việt' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'English' }).click();
+  await expect(page.getByRole('button', { name: 'Enter the temple' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'English' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Enter the temple' }).click();
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Enter the temple' })).toBeVisible();
+  await page.getByRole('button', { name: 'Tiếng Việt' }).click();
+  await expect(page.getByRole('button', { name: 'Vào chùa' })).toBeVisible();
 });
