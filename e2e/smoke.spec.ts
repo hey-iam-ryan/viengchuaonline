@@ -287,10 +287,12 @@ test('điện thoại: mọi nút hành động đều có chữ; bấm 🎵 th�
   await page.goto('./');
   await page.getByRole('button', { name: 'Vào chùa' }).click();
   await page.waitForFunction(() => (window as any).__vco?.zones);
-  for (const id of ['drum', 'zen-0']) {
+  // chờ đúng nút của khu vừa tới hiện ra: HUD đã cập nhật theo vị trí mới thì mới đo (máy CI chậm có thể chưa kịp)
+  for (const [id, own] of [['drum', 'Đánh trống'], ['zen-0', 'Ngồi thiền']] as const) {
     await page.evaluate((id) => { const v = (window as any).__vco; const z = v.zones.find((z: any) => z.id === id); v.player.x = z.x; v.player.z = z.z; }, id);
-    await expect(page.locator('.act:not([hidden])').first()).toBeVisible();
-    const labels = await page.locator('.act:not([hidden]) .lb').evaluateAll((els) => els.map((e) => ({ text: e.textContent?.trim() ?? '', w: e.getBoundingClientRect().width })));
+    await expect(page.getByRole('button', { name: own })).toBeVisible();
+    // chỉ xét nút đang thật sự hiện trên màn hình (không dựa vào thuộc tính hidden, vốn đổi theo từng khung hình)
+    const labels = await page.locator('.act:visible .lb').evaluateAll((els) => els.map((e) => ({ text: e.textContent?.trim() ?? '', w: e.getBoundingClientRect().width })));
     expect(labels.length).toBeGreaterThan(0);
     for (const l of labels) {
       expect(l.text).not.toBe('');
