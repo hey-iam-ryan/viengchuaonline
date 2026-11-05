@@ -45,3 +45,10 @@ export function tileTexture(): THREE.Texture {
   t.anisotropy = 4;
   return t;
 }
+
+/** Bản sao material cột sơn son, bật trong suốt để làm mờ khi người chơi đứng sát (cột lầu chuông, lầu trống). */
+export function fadablePostMaterial(): THREE.MeshStandardMaterial {
+  const m = (MAT.lacquer as THREE.MeshStandardMaterial).clone();
+  m.transparent = true;
+  return m;
+}

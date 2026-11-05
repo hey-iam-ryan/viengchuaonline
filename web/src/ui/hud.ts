@@ -14,6 +14,7 @@ import { PRAYERS, type Wish } from '@vco/shared/protocol';
 import type { CardKind } from './shareCard';
 import { Bow108, BOW_TARGET } from '../interact/bow108';
 import { Meditation, breathPhase } from '../interact/meditation';
+import { PLACES, type PlaceId } from '@vco/shared/places';
 import { Pose } from '@vco/shared/protocol';
 import { lunarOf } from '@vco/shared/lunar';
 import { lunarShort, occasionLabel } from './occasion';
@@ -62,6 +63,8 @@ export interface HudDeps {
   rank: () => { label: string; points: number; nextLabel: string | null; toNext: number };
   greet: (id: string) => void;
   onZen?: (minutes: number) => void;
+  /** Chọn nơi đến trên bản đồ: nhân vật tự đi theo lộ trình. */
+  goTo: (id: PlaceId) => void;
 }
 
 /** Thanh trạng thái, nút hành động theo ngữ cảnh, bộ đếm, giờ lễ, chia sẻ, cúng dường. */
@@ -79,12 +82,13 @@ export function createHud(d: HudDeps) {
   const musicBtn = h('button', { type: 'button', class: 'icon-btn', 'aria-pressed': 'false', on: { click: () => toggleMusic() } }, '🎵');
   const chantBtn = h('button', { type: 'button', class: 'icon-btn', 'aria-pressed': 'false', on: { click: () => toggleChant() } }, '🪵');
   const fsSupport = fullscreenSupport();
-  const fsBtn = h('button', { type: 'button', class: 'icon-btn', on: { click: () => doFullscreen() } }, '⛶');
+  const fsBtn = h('button', { type: 'button', class: 'icon-btn fs-icon', on: { click: () => doFullscreen() } }, '⛶');
   fsBtn.hidden = fsSupport === 'none' || fsSupport === 'standalone';
   const shareBtn = h('button', { type: 'button', class: 'icon-btn', on: { click: () => doShare() } }, '🔗');
   const menuBtn = h('button', { type: 'button', class: 'icon-btn', 'aria-expanded': 'false', on: { click: () => toggleMenu() } }, '⋯');
+  const mapBtn = h('button', { type: 'button', class: 'icon-btn', 'data-testid': 'map-btn', on: { click: () => showPlaces() } }, '🗺️');
   const menu = h('div', { class: 'menu', hidden: true });
-  const top = h('div', { class: 'top' }, statusPill, h('div', { class: 'top-right' }, musicBtn, chantBtn, fsBtn, shareBtn, menuBtn), menu);
+  const top = h('div', { class: 'top' }, statusPill, h('div', { class: 'top-right' }, mapBtn, musicBtn, chantBtn, fsBtn, shareBtn, menuBtn), menu);
 
   const bowsEl = h('b', { 'data-testid': 'bow-count' });
   const beadsEl = h('b');
@@ -146,6 +150,8 @@ export function createHud(d: HudDeps) {
     root.appendChild(box);
   }
   function startZen(n: number) {
+    // đã đứng dậy / rời tảng đá trong lúc chọn thời gian: không bắt đầu (tránh "đã thiền 0 phút")
+    if (d.player.pose !== Pose.Sit) { toast(t('zen.needSeat')); return; }
     zenSession.start(n, Date.now());
     zenStop.textContent = t('zen.stop');
     zenBox.hidden = false;
@@ -187,6 +193,11 @@ export function createHud(d: HudDeps) {
   const hint = h('div', { class: 'hint', hidden: true });
   const circPill = h('div', { class: 'pill circ', hidden: true, 'data-testid': 'circ-pill' });
   root.append(circPill);
+  // la bàn: chỉ hướng tới nơi đang đến (theo hướng camera), kèm khoảng cách
+  const compassArrow = h('span', { class: 'compass-arrow', 'aria-hidden': 'true' }, '➤');
+  const compassText = h('span');
+  const compass = h('div', { class: 'pill compass', hidden: true, 'data-testid': 'compass' }, compassArrow, compassText);
+  root.append(compass);
   const toasts = h('div', { class: 'toasts', 'aria-live': 'polite' });
   root.append(top, ceremony, stats, actionsBar, hint, toasts);
   // Thanh thống kê có thể xuống 2 dòng trên màn hẹp: báo chiều cao thật để cột nút và dòng gợi ý nằm ngay trên nó.
@@ -259,6 +270,7 @@ export function createHud(d: HudDeps) {
       ...(netStatus === 'online' ? [h('button', { type: 'button', on: { click: () => { d.net.changeHall(); toggleMenu(false); } } }, `🚪 ${t('hall.change')}`)] : []),
       h('button', { type: 'button', on: { click: () => { toggleMenu(false); showWishes(); } } }, `🎋 ${t('wish.list')}`),
       ...(netStatus === 'online' ? [h('button', { type: 'button', on: { click: () => { toggleMenu(false); void doShare(); } } }, `👥 ${t('invite')}`)] : []),
+      ...(fsBtn.hidden ? [] : [h('button', { type: 'button', class: 'menu-fs', on: { click: () => { toggleMenu(false); void doFullscreen(); } } }, `⛶ ${t('fullscreen')}`)]),
       h('button', { type: 'button', on: { click: () => { const l = getLang() === 'vi' ? 'en' : 'vi'; setLang(l); d.onLang(l); toggleMenu(false); } } }, `🌐 ${t('lang')}`),
       ...(d.donateUrl ? [h('a', { href: d.donateUrl, target: '_blank', rel: 'noopener noreferrer', class: 'donate' }, `🙏 ${t('donate')}`)] : []),
       h('button', { type: 'button', on: { click: () => { toggleMenu(false); showCredits(); } } }, `📜 ${t('credits')}`),
@@ -269,6 +281,20 @@ export function createHud(d: HudDeps) {
     const box: HTMLDivElement = h('div', { class: 'onboard', role: 'dialog', 'aria-modal': 'true' },
       h('div', { class: 'card' }, h('h2', {}, title), ...body.map((b) => (typeof b === 'string' ? h('p', { class: 'sub' }, b) : b)),
         h('button', { type: 'button', class: 'primary', on: { click: () => { box.remove(); } } }, t('close'))));
+    root.appendChild(box);
+  }
+
+  const placeName = (id: PlaceId) => t(`place.${id}` as Key);
+
+  function showPlaces() {
+    const list = h('div', { class: 'wish-list' }, ...PLACES.map((p) => {
+      const m = Math.round(Math.hypot(p.x - d.player.x, p.z - d.player.z));
+      return h('button', { type: 'button', class: 'wish-opt place-opt', on: { click: () => { box.remove(); d.goTo(p.id); } } },
+        h('span', { 'aria-hidden': 'true' }, p.icon), ' ', h('b', {}, placeName(p.id)), h('span', { class: 'place-m' }, t('place.meters', { n: m })));
+    }));
+    const box: HTMLDivElement = h('div', { class: 'onboard', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('map.title') },
+      h('div', { class: 'card' }, h('h2', {}, `🗺️ ${t('map.title')}`), list,
+        h('button', { type: 'button', class: 'link', on: { click: () => { box.remove(); } } }, t('close'))));
     root.appendChild(box);
   }
 
@@ -346,6 +372,8 @@ export function createHud(d: HudDeps) {
     shareBtn.title = t('share');
     menuBtn.setAttribute('aria-label', t('menu'));
     menuBtn.title = t('menu');
+    mapBtn.setAttribute('aria-label', t('map'));
+    mapBtn.title = t('map');
     (stats.querySelector('.k-bows') as HTMLElement).textContent = `${t('stats.bows')}:`;
     (stats.querySelector('.k-beads') as HTMLElement).textContent = `${t('stats.beads')}:`;
     hint.textContent = matchMedia('(pointer: coarse)').matches ? t('hint.mobile') : t('hint.desktop');
@@ -390,6 +418,14 @@ export function createHud(d: HudDeps) {
   let acc = 1;
   return {
     toast,
+    placeName,
+    /** Hiện la bàn tới nơi đang đến; `angle` là góc so với hướng nhìn của camera (0 = thẳng phía trước). */
+    setCompass(target: { id: PlaceId; angle: number; meters: number } | null) {
+      compass.hidden = !target;
+      if (!target) return;
+      compassArrow.style.transform = `rotate(${(target.angle - Math.PI / 2).toFixed(3)}rad)`;
+      compassText.textContent = `${placeName(target.id)} · ${t('place.meters', { n: Math.round(target.meters) })}`;
+    },
     /** Hiện dòng gợi ý điều khiển một lần, sau khi thẻ hướng dẫn (nếu có) đã đóng. */
     showHint() {
       hint.hidden = false;

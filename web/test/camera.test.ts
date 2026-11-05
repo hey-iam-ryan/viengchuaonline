@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { GATE_CAM_MAX_Y, capCameraHeight, clampCamera } from '../src/player/camera';
+import { GATE_CAM_MAX_Y, capCameraHeight, clampCamera, lookHeight } from '../src/player/camera';
 
 test('camera không xuyên tường mặt tiền chánh điện khi đứng ngoài sân', () => {
   // người ở sân sát tường mặt tiền (z=-10..-10.5), camera xoay ra sau tường (bên trong điện)
@@ -21,4 +21,13 @@ test('camera trong vùng cổng bị hạ thấp dưới mái, ngoài vùng cổ
 
 test('đứng ngay dưới cổng thì camera không bị kéo dính vào người', () => {
   expect(clampCamera(0, 18, 0, 24)).toEqual({ x: 0, z: 24 });
+});
+
+test('màn ngang nhìn ngang ngực; màn dọc nhìn cao hơn để thấy mái và biển hiệu', () => {
+  expect(lookHeight(16 / 9)).toBe(1);
+  expect(lookHeight(1)).toBe(1);
+  expect(lookHeight(390 / 844)).toBeCloseTo(2, 1);
+  expect(lookHeight(0.3)).toBe(2);
+  expect(lookHeight(0.75)).toBeGreaterThan(1);
+  expect(lookHeight(0.75)).toBeLessThan(2);
 });

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { BAMBOO, DRUM_TOWER, ZEN, ZONES } from '@vco/shared/world';
-import { MAT } from './materials';
+import { MAT, fadablePostMaterial } from './materials';
 
 function mesh(g: THREE.BufferGeometry, m: THREE.Material, shadow = true) {
   const o = new THREE.Mesh(g, m);
@@ -9,14 +9,15 @@ function mesh(g: THREE.BufferGeometry, m: THREE.Material, shadow = true) {
   return o;
 }
 
-/** Lầu trống (đối xứng lầu chuông) + vườn thiền giữa rừng trúc. */
-export function buildGardenArea(root: THREE.Group): void {
+/** Lầu trống (đối xứng lầu chuông) + vườn thiền giữa rừng trúc. Trả về material cột lầu trống (để làm mờ khi đứng sát). */
+export function buildGardenArea(root: THREE.Group): THREE.MeshStandardMaterial {
   // --- lầu trống ---
   const dt = DRUM_TOWER;
   const cx = (dt.minX + dt.maxX) / 2;
   const cz = (dt.minZ + dt.maxZ) / 2;
+  const postMat = fadablePostMaterial();
   for (const [x, z] of [[dt.minX, dt.minZ], [dt.maxX, dt.minZ], [dt.minX, dt.maxZ], [dt.maxX, dt.maxZ]]) {
-    const post = mesh(new THREE.CylinderGeometry(0.16, 0.18, 4, 10), MAT.lacquer);
+    const post = mesh(new THREE.CylinderGeometry(0.16, 0.18, 4, 10), postMat);
     post.position.set(x, 2, z);
     root.add(post);
   }
@@ -91,4 +92,5 @@ export function buildGardenArea(root: THREE.Group): void {
   path.rotation.x = -Math.PI / 2;
   path.position.set((ZEN.x + 20) / 2 - 3, 0.013, ZEN.z);
   root.add(path);
+  return postMat;
 }

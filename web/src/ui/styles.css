@@ -149,3 +149,13 @@ button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
   .stats { flex-wrap: wrap; justify-content: center; column-gap: 10px; width: max-content; max-width: calc(100vw - 16px); white-space: normal; border-radius: 16px; font-size: 12.5px; padding: 5px 12px; }
   .stats .sep { display: none; }
 }
+.compass { position: fixed; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top) + 148px); /* dưới ô nhiễu tháp (112px) */ display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 700; pointer-events: none !important; }
+.compass[hidden] { display: none; }
+.compass-arrow { display: inline-block; color: var(--red); font-size: 16px; transition: transform .15s linear; }
+.place-opt { display: flex; align-items: center; gap: 6px; }
+.place-opt .place-m { margin-left: auto; opacity: .6; font-size: 13px; }
+@media (max-width: 480px) {
+  /* thanh trên cùng chật: nút toàn màn hình chuyển vào menu ⋯ */
+  .top-right .icon-btn.fs-icon { display: none; }
+}
+@media (min-width: 481px) { .menu .menu-fs { display: none; } }

@@ -4,6 +4,7 @@ import { PLAYER_RADIUS, SPAWN, resolveCollision, type Zone } from '@vco/shared/w
 export const WALK_SPEED = 3; // m/s
 export const RUN_FACTOR = 1.8;
 const ARRIVE = 0.15;
+const ARRIVE_WAYPOINT = 0.5; // điểm mốc giữa đường: không cần dừng đúng chỗ, đi mượt hơn
 const STUCK_WINDOW = 0.6; // giây
 export const BOW_SECONDS = 1.6;
 export const VAI_SECONDS = 1.2;
@@ -17,20 +18,50 @@ export class LocalPlayer {
   private bowLeft = 0;
   private dirty = true;
   private target: { x: number; z: number } | null = null;
+  /** Các điểm còn lại của lộ trình (bản đồ); đi nhanh như khi chạy để không phải chờ lâu. */
+  private route: { x: number; z: number }[] = [];
   private stuckT = 0;
   private stuckFrom = { x: 0, z: 0 };
 
   get hasTarget(): boolean { return this.target !== null; }
 
-  /** Bấm xuống nền: tự đi tới (x, z). */
+  /** Bấm xuống nền: tự đi tới (x, z). Huỷ lộ trình đang đi (nếu có). */
   moveTo(x: number, z: number): void {
+    this.route = [];
+    this.onRoute = false;
+    this.go(x, z);
+  }
+
+  /** Đi lần lượt qua các điểm (lộ trình từ bản đồ). */
+  followRoute(points: { x: number; z: number }[]): void {
+    if (!points.length) return;
+    this.route = points.slice(1);
+    this.onRoute = true;
+    this.go(points[0].x, points[0].z);
+  }
+
+  /** Đang đi theo lộ trình từ bản đồ. */
+  get routing(): boolean { return this.target !== null && this.onRoute; }
+
+  private onRoute = false;
+
+  private go(x: number, z: number): void {
     this.target = { x, z };
     this.bowLeft = 0;
     this.stuckT = 0;
     this.stuckFrom = { x: this.x, z: this.z };
   }
 
-  cancelTarget(): void { this.target = null; }
+  /** Sang điểm kế tiếp của lộ trình; hết điểm thì dừng lại đứng. */
+  private nextOrStop(): void {
+    const n = this.route.shift();
+    if (n) { this.go(n.x, n.z); return; }
+    this.target = null;
+    this.onRoute = false;
+    this.set(this.x, this.z, this.ry, Pose.Stand);
+  }
+
+  cancelTarget(): void { this.target = null; this.route = []; this.onRoute = false; }
 
   /** Đi theo hướng (wx, wz) trong hệ thế giới, chia nhỏ bước để không xuyên vật cản. */
   private walk(wx: number, wz: number, dist: number): void {
@@ -56,7 +87,7 @@ export class LocalPlayer {
     const speed = WALK_SPEED * (run ? RUN_FACTOR : 1);
     const mag = Math.hypot(move.x, move.z);
     if (mag > DEADZONE) {
-      this.target = null;
+      this.cancelTarget();
       this.bowLeft = 0;
       const c = Math.cos(camYaw);
       const s = Math.sin(camYaw);
@@ -69,19 +100,17 @@ export class LocalPlayer {
       const dx = this.target.x - this.x;
       const dz = this.target.z - this.z;
       const d = Math.hypot(dx, dz);
-      if (d < ARRIVE) {
-        this.target = null;
-        this.set(this.x, this.z, this.ry, Pose.Stand);
+      if (d < (this.route.length ? ARRIVE_WAYPOINT : ARRIVE)) {
+        this.nextOrStop();
         return;
       }
-      this.walk(dx, dz, Math.min(d, speed * dt));
+      this.walk(dx, dz, Math.min(d, (this.onRoute ? WALK_SPEED * RUN_FACTOR : speed) * dt));
       // kẹt (đích trong vật cản / bị chặn): sau STUCK_WINDOW mà đi được quá ít thì dừng
       this.stuckT += dt;
       if (this.stuckT >= STUCK_WINDOW) {
         const moved = Math.hypot(this.x - this.stuckFrom.x, this.z - this.stuckFrom.z);
         if (moved < speed * STUCK_WINDOW * 0.25) {
-          this.target = null;
-          this.set(this.x, this.z, this.ry, Pose.Stand);
+          this.nextOrStop(); // kẹt giữa lộ trình: bỏ điểm này, đi tiếp điểm sau
           return;
         }
         this.stuckT = 0;
@@ -97,9 +126,10 @@ export class LocalPlayer {
     if (this.pose === Pose.Walk) this.set(this.x, this.z, this.ry, Pose.Stand);
   }
 
-  sitAt(zone: Zone): void {
+  /** Ngồi tại vùng; mặc định nhìn về −z, nơi đặt tượng Phật (bồ đoàn trong chánh điện). */
+  sitAt(zone: Zone, ry = Math.PI): void {
     this.bowLeft = 0;
-    this.set(zone.x, zone.z, Math.PI, Pose.Sit); // nhìn về −z, nơi đặt tượng Phật
+    this.set(zone.x, zone.z, ry, Pose.Sit);
   }
 
   standUp(): void {

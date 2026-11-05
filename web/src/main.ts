@@ -6,7 +6,7 @@ import { buildTemple } from './scene/temple';
 import { LocalPlayer } from './player/localPlayer';
 import { Controls } from './player/controls';
 import { createAvatar, type Avatar } from './player/avatar';
-import { capCameraHeight, clampCamera } from './player/camera';
+import { capCameraHeight, clampCamera, lookHeight } from './player/camera';
 import { AudioManager } from './interact/audio';
 import { IncenseField } from './interact/incense';
 import { LanternField } from './interact/lanterns';
@@ -36,6 +36,7 @@ import { detectLang, setLang, t } from './ui/i18n';
 import { showOnboarding } from './ui/onboarding';
 import { createHud } from './ui/hud';
 import { sanitizeName } from '@vco/shared/name';
+import { PLACES, routeTo, type PlaceId } from '@vco/shared/places';
 
 function fatal(msg: string) {
   const d = document.createElement('div');
@@ -77,6 +78,8 @@ if (!stage) {
   const stateOf = () => ({ x: player.x, z: player.z, ry: player.ry, p: player.pose });
 
   let hud: ReturnType<typeof createHud> | null = null;
+  /** Nơi đang đến (chọn trên bản đồ); hết lộ trình thì báo tới nơi và tắt la bàn. */
+  let activePlace: PlaceId | null = null;
   let daily = loadDaily();
   const points = () => practicePoints({ ...actions.progress, days: daily.days ?? 0 });
   let myRank = 0;
@@ -207,6 +210,10 @@ if (!stage) {
         return { label: rankLabel(k), points: p, nextLabel: nx ? rankLabel(k + 1) : null, toNext: nx ? nx.min - p : 0 };
       },
       nearby: () => nearestPlayer(remotes.positions(), player.x, player.z),
+      goTo: (id) => {
+        activePlace = id;
+        player.followRoute(routeTo(player.x, player.z, id));
+      },
       onZen: (n) => {
         actions.setProgress({ ...actions.progress, zenMinutes: actions.progress.zenMinutes + n });
         floatAtMe('zen');
@@ -292,6 +299,22 @@ if (!stage) {
       return;
     }
     player.update(dt, controls.move, controls.camYaw, controls.run);
+    if (activePlace) {
+      const place = PLACES.find((p) => p.id === activePlace)!;
+      const vx = place.x - player.x;
+      const vz = place.z - player.z;
+      const meters = Math.hypot(vx, vz);
+      if (!player.routing) {
+        if (meters < 1.5) hud?.toast(t('place.arrived', { place: hud.placeName(activePlace) }));
+        activePlace = null;
+        hud?.setCompass(null);
+      } else {
+        // hướng nhìn của camera: f = (−sin yaw, −cos yaw); bên phải màn hình: r = (cos yaw, −sin yaw)
+        const y = controls.camYaw;
+        const angle = Math.atan2(vx * Math.cos(y) - vz * Math.sin(y), -vx * Math.sin(y) - vz * Math.cos(y));
+        hud?.setCompass({ id: activePlace, angle, meters });
+      }
+    }
     if (ring.visible) {
       ringT += dt;
       const k = player.hasTarget ? 1 + Math.sin(ringT * 6) * 0.1 : Math.max(0, 1 - ringT * 2);
@@ -332,7 +355,14 @@ if (!stage) {
     stage.sun.position.x = player.x + 18;
     stage.sun.position.z = player.z + 14;
     stage.sun.target.position.set(player.x, 0, player.z);
-    camTarget.set(player.x, 1.0, player.z);
+    camTarget.set(player.x, lookHeight(camera.aspect), player.z);
+    // cột lầu chuông / lầu trống mờ đi khi đứng sát, để cột không che nửa màn hình
+    const atTower = nearestZone(player.x, player.z)?.kind;
+    for (const k of ['bell', 'drum'] as const) {
+      const m = temple.towerPosts[k];
+      m.opacity += ((atTower === k ? 0.25 : 1) - m.opacity) * Math.min(1, dt * 6);
+      m.depthWrite = m.opacity > 0.98;
+    }
     camera.lookAt(camTarget);
   });
 
