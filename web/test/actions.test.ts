@@ -1,6 +1,6 @@
 import { test, expect, vi } from 'vitest';
 import { Pose, type ClientMsg } from '@vco/shared/protocol';
-import { ZONES } from '@vco/shared/world';
+import { ZEN, ZONES } from '@vco/shared/world';
 import { Actions } from '../src/interact/actions';
 import { LocalPlayer } from '../src/player/localPlayer';
 import { memStorage } from './storage';
@@ -175,4 +175,23 @@ test('đánh trống ở lầu trống, có cooldown', () => {
   s.a.drum();
   expect(s.sent).toEqual([{ t: 'a', a: 'trong' }]);
   expect(setup().a.available().drum).toBe(false);
+});
+
+test('ngồi thiền: quay mặt vào tâm vườn, ở mọi tảng đá', () => {
+  for (const z of ZONES.filter((z) => z.kind === 'zen')) {
+    const s = setup(z.id);
+    expect(s.a.sitZen()).toBe(true);
+    expect(s.player.pose).toBe(Pose.Sit);
+    // hướng nhìn (sin ry, cos ry) chỉ về tâm vườn
+    const fx = Math.sin(s.player.ry);
+    const fz = Math.cos(s.player.ry);
+    const tx = (ZEN.x - z.x) / Math.hypot(ZEN.x - z.x, ZEN.z - z.z);
+    const tz = (ZEN.z - z.z) / Math.hypot(ZEN.x - z.x, ZEN.z - z.z);
+    expect(fx * tx + fz * tz).toBeCloseTo(1, 5);
+  }
+});
+test('bồ đoàn trong chánh điện vẫn quay về tượng Phật', () => {
+  const s = setup('cushion-0');
+  s.a.sit();
+  expect(s.player.ry).toBe(Math.PI);
 });

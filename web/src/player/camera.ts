@@ -46,3 +46,14 @@ export function clampCamera(px: number, pz: number, cx: number, cz: number): { x
   }
   return t === 1 ? { x: cx, z: cz } : { x: px + dx * t, z: pz + dz * t };
 }
+
+/**
+ * Độ cao điểm camera nhìn vào (trên người chơi). Màn hình ngang: ngang ngực (1,0 m).
+ * Màn hình dọc (điện thoại): nhìn cao dần tới 2,0 m để nhân vật nằm thấp trong khung, thấy được mái và biển hiệu phía trước.
+ */
+export function lookHeight(aspect: number): number {
+  const PORTRAIT = 0.46; // 390 × 844
+  if (aspect >= 1) return 1.0;
+  const t = Math.min(1, (1 - aspect) / (1 - PORTRAIT));
+  return 1.0 + t;
+}

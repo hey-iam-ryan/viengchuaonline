@@ -109,3 +109,43 @@ test('đang ngồi mà bấm đi → đứng dậy đi', () => {
   p.update(0.1, { x: 0, z: 0 }, 0);
   expect(p.pose).toBe(Pose.Walk);
 });
+
+test('đi theo lộ trình: qua lần lượt các điểm rồi đứng lại ở điểm cuối', () => {
+  const p = new LocalPlayer();
+  p.followRoute([{ x: 2.4, z: 21 }, { x: 2.4, z: 12 }, { x: 0, z: 6.8 }]);
+  expect(p.routing).toBe(true);
+  for (let i = 0; i < 400 && p.hasTarget; i++) p.update(1 / 30, { x: 0, z: 0 }, 0);
+  expect(p.routing).toBe(false);
+  expect(Math.hypot(p.x - 0, p.z - 6.8)).toBeLessThan(0.2);
+  expect(p.pose).toBe(Pose.Stand);
+});
+test('đi theo lộ trình nhanh hơn đi bộ thường (như khi chạy)', () => {
+  const p = new LocalPlayer();
+  p.followRoute([{ x: 0, z: 18 }]);
+  p.update(1, { x: 0, z: 0 }, 0);
+  expect(SPAWN.z - p.z).toBeCloseTo(3 * RUN_FACTOR, 1);
+});
+test('đang đi theo lộ trình mà dùng joystick thì huỷ lộ trình', () => {
+  const p = new LocalPlayer();
+  p.followRoute([{ x: 0, z: 20 }, { x: 0, z: 12 }]);
+  p.update(0.1, { x: 0, z: 0 }, 0);
+  p.update(0.1, { x: 1, z: 0 }, 0);
+  p.update(0.1, { x: 0, z: 0 }, 0);
+  expect(p.routing).toBe(false);
+  expect(p.hasTarget).toBe(false);
+});
+test('bấm xuống nền giữa lộ trình thì thôi đi theo lộ trình', () => {
+  const p = new LocalPlayer();
+  p.followRoute([{ x: 0, z: 20 }, { x: 0, z: 12 }]);
+  p.moveTo(1, 27);
+  expect(p.routing).toBe(false);
+  for (let i = 0; i < 100 && p.hasTarget; i++) p.update(1 / 30, { x: 0, z: 0 }, 0);
+  expect(Math.hypot(p.x - 1, p.z - 27)).toBeLessThan(0.2);
+});
+test('kẹt giữa lộ trình (điểm nằm trong vật cản) thì bỏ điểm đó, đi tiếp điểm sau', () => {
+  const p = new LocalPlayer();
+  // (0, 4) là lư hương sân: không tới được; điểm sau (2.4, 12) vẫn phải tới
+  p.followRoute([{ x: 0, z: 4 }, { x: 2.4, z: 12 }]);
+  for (let i = 0; i < 900 && p.hasTarget; i++) p.update(1 / 30, { x: 0, z: 0 }, 0);
+  expect(Math.hypot(p.x - 2.4, p.z - 12)).toBeLessThan(0.2);
+});

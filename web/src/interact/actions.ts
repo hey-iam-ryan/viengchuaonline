@@ -1,5 +1,5 @@
 import { GREET_COOLDOWN_MS, INCENSE_COOLDOWN_MS, LANTERN_COOLDOWN_MS, WISH_COOLDOWN_MS, Pose, type Action, type BurnerId, type ClientMsg } from '@vco/shared/protocol';
-import { nearestZone } from '@vco/shared/world';
+import { ZEN, nearestZone } from '@vco/shared/world';
 import type { LocalPlayer } from '../player/localPlayer';
 import type { AudioManager } from './audio';
 import type { IncenseField } from './incense';
@@ -187,7 +187,8 @@ export class Actions {
   sitZen(): boolean {
     const zone = nearestZone(this.d.player.x, this.d.player.z);
     if (zone?.kind !== 'zen') return false;
-    this.d.player.sitAt(zone);
+    // tảng đá thiền xếp vòng quanh tâm vườn: quay mặt vào tâm
+    this.d.player.sitAt(zone, Math.atan2(ZEN.x - zone.x, ZEN.z - zone.z));
     return true;
   }
 

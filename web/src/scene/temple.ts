@@ -3,7 +3,7 @@ import type { BurnerId } from '@vco/shared/protocol';
 import {
   ALTAR, BELL_TOWER, BOUNDS, CORE, GATE_PILLARS, HALL, HALL_BURNER, MO_STAND, OBSTACLES, POND, TREES, WISH_TREE, YARD_BURNER, ZONES, type Box,
 } from '@vco/shared/world';
-import { MAT, tileTexture } from './materials';
+import { MAT, fadablePostMaterial, tileTexture } from './materials';
 import { glowSprite } from './glow';
 import { buildLakeArea } from './lakeArea';
 import { buildTowerArea } from './towerArea';
@@ -18,6 +18,8 @@ export interface Temple {
   statue: THREE.Object3D;
   glows: THREE.Sprite[];
   lights: THREE.PointLight[];
+  /** Material riêng cho cột lầu chuông / lầu trống: làm mờ khi người chơi đứng sát để cột không che màn hình. */
+  towerPosts: { bell: THREE.MeshStandardMaterial; drum: THREE.MeshStandardMaterial };
 }
 
 const HALL_WALL_H = 5;
@@ -287,7 +289,7 @@ export function buildTemple(scene: THREE.Scene): Temple {
   // --- hồ lớn, tượng Quan Âm, đường vào chùa, cổng ngoài ---
   GLOWS.push(...buildLakeArea(root));
   GLOWS.push(...buildTowerArea(root));
-  buildGardenArea(root);
+  const drumPostMat = buildGardenArea(root);
 
   // --- cổng tam quan ---
   for (const p of GATE_PILLARS) {
@@ -348,8 +350,9 @@ export function buildTemple(scene: THREE.Scene): Temple {
 
   // --- tháp chuông ---
   const bt = BELL_TOWER;
+  const bellPostMat = fadablePostMaterial();
   for (const [x, z] of [[bt.minX, bt.minZ], [bt.maxX, bt.minZ], [bt.minX, bt.maxZ], [bt.maxX, bt.maxZ]]) {
-    const post = mesh(new THREE.CylinderGeometry(0.16, 0.18, 4, 10), MAT.lacquer);
+    const post = mesh(new THREE.CylinderGeometry(0.16, 0.18, 4, 10), bellPostMat);
     post.position.set(x, 2, z);
     root.add(post);
   }
@@ -495,5 +498,6 @@ export function buildTemple(scene: THREE.Scene): Temple {
     statue,
     glows: GLOWS,
     lights: [glowLight, fill],
+    towerPosts: { bell: bellPostMat, drum: drumPostMat },
   };
 }

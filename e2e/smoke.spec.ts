@@ -315,3 +315,28 @@ test('màn chào: đổi ngôn ngữ bằng nút gạt, lựa chọn được nh
   await page.getByRole('button', { name: 'Tiếng Việt' }).click();
   await expect(page.getByRole('button', { name: 'Vào chùa' })).toBeVisible();
 });
+
+test('bản đồ: chọn Vườn thiền thì tự đi tới, có la bàn, tới nơi hiện nút Ngồi thiền', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('vco.tutorial.v1', '1'));
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Vào chùa' }).click();
+  await page.waitForFunction(() => (window as any).__vco?.zones);
+  await page.getByRole('button', { name: 'Bản đồ' }).click();
+  await page.getByRole('button', { name: /Vườn thiền/ }).click();
+  await expect(page.getByTestId('compass')).toContainText('Vườn thiền');
+  await expect.poll(() => page.evaluate(() => { const p = (window as any).__vco.player; return Math.hypot(p.x - 33, p.z); }), { timeout: 45_000 }).toBeLessThan(0.5);
+  await expect(page.getByRole('button', { name: 'Ngồi thiền' })).toBeVisible();
+  await expect(page.getByText('Đã tới Vườn thiền 🙏')).toBeVisible();
+  await expect(page.getByTestId('compass')).toBeHidden();
+});
+
+test('bản đồ: tới tượng Quan Âm qua cầu đá', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('vco.tutorial.v1', '1'));
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Vào chùa' }).click();
+  await page.waitForFunction(() => (window as any).__vco?.zones);
+  await page.getByRole('button', { name: 'Bản đồ' }).click();
+  await page.getByRole('button', { name: /Tượng Quan Âm/ }).click();
+  await expect.poll(() => page.evaluate(() => { const p = (window as any).__vco.player; return Math.hypot(p.x + 34.2, p.z); }), { timeout: 45_000 }).toBeLessThan(0.5);
+  await expect(page.getByRole('button', { name: 'Cầu an' })).toBeVisible();
+});
