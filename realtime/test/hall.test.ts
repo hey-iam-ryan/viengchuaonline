@@ -202,7 +202,9 @@ test('quét lá: welcome có lá, quét lá gần thì cả gian thấy lá bi�
   await sleep(300);
   if (far) a.c.send({ t: 'quet', id: far.id });
   a.c.send({ t: 'quet', id: leaf.id });
-  const m = await b.c.next('la');
+  // gửi trạng thái cũng có thể làm rơi thêm lá ('la' kèm add): bỏ qua, chờ đúng tin quét lá ('la' kèm del)
+  let m = await b.c.next('la');
+  for (let i = 0; i < 5 && !m.del; i++) m = await b.c.next('la');
   expect(m.del).toEqual([leaf.id]);
   expect(m.by).toBe(a.w.id);
   await sleep(200);
