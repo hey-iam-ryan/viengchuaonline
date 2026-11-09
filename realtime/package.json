@@ -11,7 +11,7 @@
     "@vco/shared": "*"
   },
   "devDependencies": {
-    "@cloudflare/vitest-plugin": "^1.4.11",
+    "@cloudflare/vitest-plugin": "^1.6.0",
     "@cloudflare/workers-types": "^5.20261101.1",
     "wrangler": "^4.156.0"
   }
